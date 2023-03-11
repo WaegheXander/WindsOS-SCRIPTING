@@ -1,5 +1,4 @@
-$ComputerName = "DC01"
-$ip = '192.168.100.254'
+$ip = '192.168.1.100'
 $gateway = '192.168.1.1'
 $MaskBits = '24'
 $IPType = "IPv4"
@@ -70,6 +69,11 @@ Write-Host "Control panel view set to small icons successfully" -ForegroundColor
 Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "HideFileExt" -Value 0 -WhatIf
 Write-Host "File extension shown successfully" -ForegroundColor Green
 
+# Join the server to the Windows domain
+$domain = "intranet"
+$credential = Get-Credential
+Add-Computer -DomainName $domain -Credential $credential -Restart
+
 
 Rename-Computer -NewName $ComputerName -WhatIf
 Write-Host "Computer renamed to $ComputerName successfully a reboot is required" -ForegroundColor Green
@@ -81,4 +85,3 @@ if ($ans -eq "y") {
 }
 
 Pause
-
