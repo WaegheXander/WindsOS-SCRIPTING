@@ -77,5 +77,8 @@ Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer
 
 Write-Host "File extension shown successfully" -ForegroundColor Green
 
+# reboot the computer
+Restart-Computer -WhatIf
+
 Pause
 
