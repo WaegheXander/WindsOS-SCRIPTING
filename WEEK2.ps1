@@ -1,81 +1,124 @@
 # Variables
-$domainName = "mynewdomain.local"
-$domainNetBIOSName = "MYNEWDOMAIN"
-$domainAdminName = "Administrator"
-$domainAdminPassword = "MyPassword123!"
-$subnetCIDR = "192.168.1.0/24"
-$serverIP = "192.168.1.10"
-$dnsServerIP = "192.168.1.10"
-$dhcpServerIP = "192.168.1.10"
-$dhcpScopeStart = "192.168.1.50"
-$dhcpScopeEnd = "192.168.1.100"
-$dhcpSubnetMask = "255.255.255.0"
-$dhcpRouter = "192.168.1.1"
-$dhcpDNS1 = "192.168.1.10"
-$dhcpDNS2 = "192.168.1.11"
+$forestName = "intranet"
+$domainName = "intranet"
+$domainNetBIOSName = "INTRANET"
+$dcName = "DC1"
+$dcIPAddress = "192.168.100.254"
+$dc2IPAddress = "192.168.100.253"
+$dcSiteName = "Kortrijk"
+$adminCreds = Get-Credential
 
-# Install Active Directory Domain Services feature
-Install-WindowsFeature -Name AD-Domain-Services -IncludeManagementTools
-
-# Promote the first server to the first DC for the new forest/domain
+# Promote first server to DC
+Install-WindowsFeature AD-Domain-Services -IncludeManagementTools
+Import-Module ADDSDeployment
 Install-ADDSForest `
-    -DomainName $domainName `
+    -DomainName $forestName `
     -DomainNetbiosName $domainNetBIOSName `
-    -InstallDNS `
-    -SafeModeAdministratorPassword (ConvertTo-SecureString -AsPlainText $domainAdminPassword -Force) `
-    -Force
+    -DomainMode Win2016 `
+    -ForestMode Win2016 `
+    -InstallDns `
+    -SafeModeAdministratorPassword (ConvertTo-SecureString "P@ssword1" -AsPlainText -Force) `
+    -Force:$true `
+    -NoRebootOnCompletion:$true `
+    -Confirm:$false
 
-# Check if the necessary role(s) is/are installed. If not, install them.
-if (-not (Get-WindowsFeature RSAT-AD-PowerShell)) {
-    Install-WindowsFeature RSAT-AD-PowerShell
+# Check if necessary role(s) are installed
+$roles = Get-WindowsFeature | Where-Object {$_.Name -eq "AD-Domain-Services" -or $_.Name -eq "DNS"}
+foreach ($role in $roles) {
+    if ($role.Installed -ne $true) {
+        # Install necessary role(s)
+        Install-WindowsFeature $role.Name
+    }
 }
 
-# Check and correct local DNS server settings
-$nic = Get-NetAdapter | Where-Object {$_.Status -eq "Up" -and $_.InterfaceDescription -notlike "*Hyper-V*"}
-$dnsServers = $nic | Get-DnsClientServerAddress
-if ($dnsServers.ServerAddresses[0] -ne $dnsServerIP) {
-    $dnsServers.ServerAddresses = $dnsServerIP
-    Set-DnsClientServerAddress -InterfaceIndex $nic.ifIndex -ServerAddresses $dnsServers.ServerAddresses
+# Create first DC in new forest/domain
+try {
+    Install-ADDSDomainController `
+        -Credential $adminCreds `
+        -DomainName $domainName `
+        -InstallDNS:$true `
+        -SiteName $dcSiteName `
+        -NoGlobalCatalog:$false `
+        -CreateDnsDelegation:$false `
+        -Force:$true `
+        -Confirm:$false `
+        -AllowPasswordReplicationAccountCreation:$true `
+        -CriticalReplicationOnly:$false `
+        -DatabasePath "C:\Windows\NTDS" `
+        -LogPath "C:\Windows\NTDS" `
+        -SysvolPath "C:\Windows\SYSVOL" `
+        -Force:$true `
+        -NoRebootOnCompletion:$true `
+        -SkipPreCheck:$false `
+        -Path "C:\Windows\NTDS" `
+        -DomainAdministratorCredential $adminCreds `
+        -Server $dcName `
+        -IPAddress $dcIPAddress `
+        -InstallDns:$true
+}
+catch {
+    Write-Error $_.Exception.Message
 }
 
-# Create the reverse lookup zone for the subnet and add pointer record for the first DC
-Add-DnsServerPrimaryZone -Name (ConvertTo-DnsName -Name $subnetCIDR -Type Reverse) -ZoneFile "192.168.1.in-addr.arpa.dns" -DynamicUpdate Secure
-Add-DnsServerResourceRecordPtr -ZoneName (ConvertTo-DnsName -Name $subnetCIDR -Type Reverse) -Name $serverIP.Split('.')[3] -PTRDomainName (ConvertTo-DnsName -Name "$serverIP.$domainName" -Type FQDN) -CreatePtr
+# Variables
+$preferredDNSServer = $dcIPAddress
+$alternateDNSServer = $dc2IPAddress
 
-# Rename the default site and add subnet to it
-$siteName = "My Site"
-$subnet = $subnetCIDR
-Set-ADReplicationSite -Identity "Default-First-Site-Name" -Name $siteName
-$subnetObject = Get-ADReplicationSubnet -Filter {Name -like $subnet}
-if ($subnetObject -eq $null) {
-    New-ADReplicationSubnet -Name $subnet -Site $siteName -Location "My Location"
+# Check and set local DNS servers
+$nic = Get-NetAdapter | Where-Object {$_.Status -eq "Up" -and $_.Name -eq "Ethernet"} | Select-Object -First 1
+$dnsServers = Get-DnsClientServerAddress -InterfaceIndex $nic.ifIndex | Select-Object -ExpandProperty ServerAddresses
+if ($dnsServers[0] -ne $preferredDNSServer -or $dnsServers[1] -ne $alternateDNSServer) {
+    $dnsServers = @($preferredDNSServer, $alternateDNSServer)
+    Set-DnsClientServerAddress -InterfaceIndex $nic.ifIndex -ServerAddresses $dnsServers
+    Write-Host "Local DNS servers updated."
 } else {
-    Set-ADReplicationSubnet -Identity $subnetObject -Site $siteName
+    Write-Host "Local DNS servers already set correctly."
 }
 
-# Configure the first server as the first DHCP server in the Windows network
-Install-WindowsFeature DHCP
-Add-DhcpServerInDC
+# Variables
+$subnet = "255.255.255.0/24"
+$zoneName = "mct.be"
+$dnsServer = "mct.be"
 
-# Check if the necessary server role(s) is/are installed. If not, install them.
-if (-not ( Get-WindowsFeature -Name DHCP -ComputerName $DC1)) {
-    Install-WindowsFeature -Name DHCP -ComputerName $DC1
+# Create reverse lookup zone for subnet
+Add-DnsServerPrimaryZone -NetworkId "$subnet" -ZoneName $zoneName
+
+# Add pointer record for domain controller in reverse lookup zone
+$ptrRecord = "$dcIPAddress.in-addr.arpa"
+Add-DnsServerResourceRecordPtr -ZoneName $zoneName -Name $ptrRecord -PtrDomainName $dnsServer -CreatePtr
+Write-Host "Pointer record added for $dnsServer in $zoneName."
+
+# Rename default first site
+Set-ADSite -Identity "Default-First-Site-Name" -Name $dcsiteName
+
+# Add subnet to site
+Set-ADSite -Identity $dcsiteName -Add @{"Subnets" = $subnet}
+Write-Host "Subnet $subnet added to $dcsiteName."
+
+# Variables
+$dhcpScope = "192.168.100.0"
+$dhcpRangeStart = "192.168.100.2"
+$dhcpRangeEnd = "192.168.100.252"
+$dhcpSubnetMask = "255.255.255.0"
+$dhcpRouter = "192.168.100.0"
+$dhcpDNSServers = "192.168.100.254", "192.168.100.253"
+
+# Check if DHCP server role is installed and install if necessary
+if ((Get-WindowsFeature -Name DHCP).Installed -ne "True") {
+    Install-WindowsFeature -Name DHCP
+    Write-Host "DHCP server role installed."
+} else {
+    Write-Host "DHCP server role already installed."
 }
 
+# Configure DHCP server and scope
+Add-DhcpServerv4Scope -Name "Main Scope" -StartRange $dhcpRangeStart -EndRange $dhcpRangeEnd -SubnetMask $dhcpSubnetMask -ScopeId $dhcpScope -State Active
+Set-DhcpServerv4OptionValue -OptionId 3 -Value $dhcpRouter -ScopeId $dhcpScope
+Set-DhcpServerv4OptionValue -OptionId 6 -Value $dhcpDNSServers -ScopeId $dhcpScope
 
-# Configure the second server
-
-# Set hostname
-$hostname = "DC2"
-Rename-Computer -NewName $hostname -Restart
-
-# Set static IP address and preferred DNS server
-$ipAddress = "192.168.1.2"
-$subnetMask = "255.255.255.0"
-$defaultGateway = "192.168.1.1"
-$dnsServer = "192.168.1.1"
-$dnsSuffix = "domain.local"
-$networkAdapter = Get-NetAdapter | Where-Object { $_.Name -eq "Ethernet" }
-New-NetIPAddress -InterfaceAlias $networkAdapter.Name -IPAddress $ipAddress -PrefixLength 24 -DefaultGateway $defaultGateway
-Set-DnsClientServerAddress -InterfaceAlias
-
+# Authorize DHCP server and remove warning in Server Manager
+Add-DhcpServerInDC -DnsName $env:COMPUTERNAME -IPAddress $dcIPAddress
+Set-DhcpServerDnsCredential -Credential (Get-Credential)
+Set-DhcpServerMode -DhcpServerMode "Both"
+Remove-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\ServerManager\Roles" -Name "PendingXmlIdentifier" -Force
+Write-Host "DHCP server authorized and configured."

@@ -1,46 +1,41 @@
 $ComputerName = "DC01"
-# Rename the computer
-Rename-Computer -NewName $ComputerName -WhatIf
-Write-Host "Computer renamed to $ComputerName successfully a reboot is required" -ForegroundColor Green
-
 $ip = '192.168.1.100'
 $gateway = '192.168.1.1'
 $MaskBits = '24'
 $IPType = "IPv4"
-
-# get ethernet adapter
-$adapter = Get-NetAdapter -Name Ethernet 
-
-# disable dhcp
-$adapter | Set-NetIPInterface -Dhcp Disabled 
-
-#remove old ip address
-$adapter | Remove-NetRoute -AddressFamily $IPType -Confirm:$false 
-$adapter | Remove-NetIPAddress -AddressFamily $IPType -Confirm:$false 
-
-# Set the IP address
-$adapter | New-NetIPAddress `
-    -IPAddress $ip `
-    -PrefixLength $MaskBits `
-    -DefaultGateway $gateway `
-    -InterfaceAlias Ethernet `
-    -AddressFamily $IPType -WhatIf
-
-# Set the DNS
 $dnsPrim = '192.168.1.100'
 $dnsSecd = '192.168.1.101'
 
-Set-DnsClientServerAddress -InterfaceAlias Ethernet -ServerAddresses ($dnsPrim,$dnsSecd) -WhatIf
+try {
+    Write-Host "> Setting IP address"
+    $adapter = Get-NetAdapter -Name Ethernet # get ethernet adapter
+    $adapter | Set-NetIPInterface -Dhcp Disabled # disable dhcp
+    $adapter | Remove-NetRoute -AddressFamily $IPType -Confirm:$false #remove old ip address 
+    $adapter | Remove-NetIPAddress -AddressFamily $IPType -Confirm:$false #remove old ip address
+    # Set the IP address
+    $adapter | New-NetIPAddress `
+        -IPAddress $ip `
+        -PrefixLength $MaskBits `
+        -DefaultGateway $gateway `
+        -InterfaceAlias Ethernet `
+        -AddressFamily $IPType -WhatIf
+    # Set the DNS servers
+    Write-Host "> Setting DNS servers"
+    Set-DnsClientServerAddress -InterfaceAlias Ethernet -ServerAddresses ($dnsPrim,$dnsSecd) -WhatIf
+    Write-Host "> IP address & DNS servers set successfully" -ForegroundColor Green
+}
+catch {
+    Write-Error $_.Exception.Message
+}
 
-Write-Host "IP address & DNS servers set successfully" -ForegroundColor Green
-
+Write-Host "> Setting correct timezone"
 #check if the timezone is correct
 if((Get-TimeZone).BaseUtcOffset -eq ([TimeSpan]::FromHours(1))) {
-    Write-Host "Timezone is correct" -ForegroundColor Green 
+    Write-Host "> Timezone is correct" -ForegroundColor Green 
 } else {
-    Write-Host "Timezone is not correct" -ForegroundColor Red
+    Write-Host "> Timezone is not correct" -ForegroundColor Red
     Set-TimeZone -TimeZone "Central European Standard Time" -WhatIf
-    Write-Host "Timezone set to Central European Standard Time" -ForegroundColor Green
+    Write-Host "> Timezone set to Central European Standard Time" -ForegroundColor Green
 }
 
 
@@ -63,7 +58,6 @@ Set-ItemProperty -Path $UserKey -Name "IsInstalled" -Value 0 -WhatIf
 
 #stop internet explorer to apply the changes
 Stop-Process -Name Explorer -WhatIf
-
 Write-Host "IE Enhanced Security Setting disabled successfully" -ForegroundColor Green 
 
 # enable the control panel view to be set to small icons
@@ -74,11 +68,17 @@ Write-Host "Control panel view set to small icons successfully" -ForegroundColor
 
 # enable the file extension to be shown
 Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "HideFileExt" -Value 0 -WhatIf
-
 Write-Host "File extension shown successfully" -ForegroundColor Green
 
-# reboot the computer
-Restart-Computer -WhatIf
+
+Rename-Computer -NewName $ComputerName -WhatIf
+Write-Host "Computer renamed to $ComputerName successfully a reboot is required" -ForegroundColor Green
+$ans = Read-Host "reboot now? (y/n) "
+if ($ans -eq "y") {
+    Restart-Computer -WhatIf
+} else {
+    Write-Host "reboot later" -ForegroundColor Green
+}
 
 Pause
 
