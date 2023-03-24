@@ -251,6 +251,13 @@ function installPrinter {
     }
 
     try {
+
+        write-host "> Installing the printer named $printerName." -ForegroundColor Green
+        Write-Host "> Installing the printer driver named $printerDriver." -ForegroundColor Green
+        Write-Host "> Installing the printer port named $printerPort." -ForegroundColor Green
+
+
+
         Write-Host "> Installing the printer." -ForegroundColor Green
         Add-PrinterPort -Name $printerPort -PrinterHostAddress $printerIPAddress
         Write-Host "> The printer port has been added." -ForegroundColor Green
@@ -262,9 +269,7 @@ function installPrinter {
         # Add the printer
         Add-Printer -Name $printerName -DriverName $printerDriver -PortName $printerPort
         Write-Host "> The printer has been added." -ForegroundColor Green
-        Write-Host "> The printer is shared as $shareName." -ForegroundColor Green
-        Write-Host "> The printer is located at $printerLocation." -ForegroundColor Green
-        Write-Host "> The printer is available at \\$env:COMPUTERNAME\$shareName." -ForegroundColor Green
+        
         $ans = Read-Host -Prompt "Would you like to print a test page? (Y/N)"
         while ($True) {
             if ($ans.ToLower() -eq "y") {
@@ -298,6 +303,9 @@ function installPrinter {
                     $shareLocation = Read-Host -Prompt "Enter the location of the printer:"
                 }
                 Set-Printer -Name $printerName -Location $shareLocation -Shared $True -ShareName $shareName
+                Write-Host "> The printer is shared as $shareName." -ForegroundColor Green
+                Write-Host "> The printer is located at $printerLocation." -ForegroundColor Green
+                Write-Host "> The printer is available at \\$env:COMPUTERNAME\$shareName." -ForegroundColor Green
                 break
             }
             elseif ($ans -eq "n") {
