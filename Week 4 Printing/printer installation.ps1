@@ -1,3 +1,5 @@
+$ans, $url, $outputPath, $outputFile, $registryPath, $newSpoolDirectory, $driverPath, $printerName, $printerDriver, $printerDriverPath, $printerPort, $printerIPAddress, $shareName, $printerLocation
+$driverPath = "C:\HP Universal Print Driver\pcl6-x64-v7.0.1.24923"
 function checkIP {
     [ParameterType] [string]$tempIPAddress
     
@@ -75,7 +77,6 @@ function checkPrinterDriver {
             installPrinterDriver
             Write-Host "> The printer driver has been installed." -ForegroundColor Green
             break
-            
         }
         else {
             Get-PrinterDriver
@@ -112,12 +113,7 @@ function installPrinterDriver {
     }
 
     Write-Host "> Downloading the file from $url to $outputPath\$outputFile" -ForegroundColor Green
-    Write-Host "> !!! Don't forget to copy your path you unzip the file to !!!" -ForegroundColor Yellow
-    Write-Host "> !!! Don't forget to copy your path you unzip the file to !!!" -ForegroundColor Yellow
-    Write-Host "> !!! Don't forget to copy your path you unzip the file to !!!" -ForegroundColor Yellow
-    Write-Host "> !!! Don't forget to copy your path you unzip the file to !!!" -ForegroundColor Yellow
-    Write-Host "> !!! Don't forget to copy your path you unzip the file to !!!" -ForegroundColor Yellow
-    Write-Host "> !!! Don't forget to copy your path you unzip the file to !!!" -ForegroundColor Yellow
+
 
     try {
         # Download the file
@@ -132,19 +128,8 @@ function installPrinterDriver {
         Remove-Item "$outputPath\$outputFile" -Force
         
         Write-Host "> The file has been downloaded to $outputPath\$outputFile" -ForegroundColor Green
-        
-        $driverPath = Read-Host -Prompt "Enter the path where you extracted the driver files:"
-        while ($driverPath -eq "" -or (!(Test-Path $driverPath))) {
-            Write-Host "> Error: The path does not exist." -ForegroundColor Red
-            $driverPath = Read-Host -Prompt "Enter the path where you extracted the driver files:"
-        }
 
-        $printerDriver = (Get-ChildItem -Path $driverPath -Filter "*.inf").Name
-        #get the first file with .inf extension
-        $printerDriver = $printerDriver.Split(" ")[0]
-        Write-Host "> The driver name is $printerDriver" -ForegroundColor Green
-
-        installPrinter
+        getDriverName
     }
     catch {
         Write-Host "> Error: The file could not be downloaded." -ForegroundColor Red
@@ -166,6 +151,16 @@ function installPrinterDriver {
             }
         }
     }
+}
+
+function  getDriverName {
+    $printerDriver = (Get-ChildItem -Path $driverPath -Filter "*.inf").Name
+    #get the first file with .inf extension
+    $printerDriver = $printerDriver.Split(" ")[0]
+    Write-Host "> The driver name is $printerDriver" -ForegroundColor Green
+    
+    installPrinter
+    
 }
 
 function installPrinter {
@@ -205,6 +200,8 @@ function installPrinter {
     }
 
     try {
+
+        Write-Host "> Installing the printer." -ForegroundColor Green
         # Add the printer port
         Add-PrinterPort -Name $printerPort -PrinterHostAddress $printerIPAddress
         Write-Host "> The printer port has been added." -ForegroundColor Green
@@ -300,5 +297,4 @@ function PrintTestPage {
     }
 }
 
-$ans, $url, $outputPath, $outputFile, $registryPath, $newSpoolDirectory, $driverPath, $printerName, $printerDriver, $printerDriverPath, $printerPort, $printerIPAddress, $shareName, $printerLocation
 Install-PrinterServices
