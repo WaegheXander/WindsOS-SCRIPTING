@@ -13,7 +13,7 @@ function checkIP {
 
 function Install-PrinterServices {
     # Check if Print and Document Services feature is installed
-    if (!(Get-WindowsFeature -Name Print-Services -ErrorAction SilentlyContinue | Where-Object {$_.Installed})) {
+    if (!(Get-WindowsFeature -Name Print-Services | Where-Object {$_.Installed})) {
         # Install Print and Document Services feature
         Write-Host "> Installing Print and Document Services feature..." -ForegroundColor Yellow
         Install-WindowsFeature -Name Print-Services -IncludeAllSubFeature -Restart -Verbose
@@ -222,7 +222,7 @@ function installPrinter {
         Write-Host "> Error: The printer name cannot be empty." -ForegroundColor Red
         $printerName = Read-Host -Prompt "Enter the printer name:"
         #check if the printername is already in use
-        while (Get-Printer -Name $printerName -ErrorAction SilentlyContinue) {
+        while (Get-Printer -Name $printerName) {
             Write-Host "> Warning: The printer name is already in use." -ForegroundColor Yellow
             $printerName = Read-Host -Prompt "Do you wish to overwrite it? (can cause problems)"
         }
@@ -244,10 +244,10 @@ function installPrinter {
         Write-Host "> Error: The printer port cannot be empty." -ForegroundColor Red
         $tempprinterPort = Read-Host -Prompt "Enter the printer port [no ip address!]:"
         #check if the printerport is already in use
-        while (Get-PrinterPort -Name $tempprinterPort -ErrorAction SilentlyContinue) {
+        while (Get-PrinterPort -Name $tempprinterPort) {
             Write-Host "> Warning: The printer port is already in use." -ForegroundColor Yellow
         }
-        $printerPort =  $printerIPAddress + "_" + $tempprinterPort
+        $printerPort = $printerIPAddress + "_" + $tempprinterPort
     }
 
     try {
