@@ -1,5 +1,6 @@
-$ans, $url, $outputPath, $outputFile, $registryPath, $newSpoolDirectory, $driverPath, $printerName, $printerDriver, $printerDriverPath, $printerPort, $printerIPAddress, $shareName, $printerLocation
+$ans, $url, $outputPath, $outputFile, $registryPath, $newSpoolDirectory, $driverPath, $printerName, , $printerDriverPath, $printerPort, $printerIPAddress, $shareName, $printerLocation
 $driverPath = "C:\HP Universal Print Driver\pcl6-x64-7.0.1.24923"
+$printerDriver = "HP Universal Printing PCL 6"
 function checkIP {
     [ParameterType] [string]$tempIPAddress
     
@@ -129,7 +130,7 @@ function installPrinterDriver {
         
         Write-Host "> The file has been downloaded to $outputPath\$outputFile" -ForegroundColor Green
 
-        getDriverName
+        installPrinter
     }
     catch {
         Write-Host "> Error: The file could not be downloaded." -ForegroundColor Red
@@ -148,70 +149,6 @@ function installPrinterDriver {
             else {
                 Write-Host "> Error: Please enter Y or N." -ForegroundColor Red
                 $ans = Read-Host -Prompt "Do you see your printer driver? (Y/N)"
-            }
-        }
-    }
-}
-
-function  getDriverName {
-    try {
-        $printerDriver = (Get-ChildItem -Path $driverPath -Filter "*.inf").Name
-        #get the first file with .inf extension
-        $printerDriverFile = $printerDriver.Split(" ")[0]
-        $printerDriver = pnputil.exe -a "$driverPath\$printerDriverFile" | Select-String -Pattern "Driver name"
-        Write-Host "> The driver name is $printerDriver" -ForegroundColor Green
-        installPrinter
-    }
-    catch {
-        Write-Host "> Error: The driver name could not be found." -ForegroundColor Red
-        $ans = Read-Host -Prompt "Manual input? (Y/N)"
-        while ($True) {
-            if ($ans.ToLower() -eq "y") {
-                ManualDriverName
-                break
-            }
-            elseif ($ans.ToLower() -eq "n") {
-                Write-Host "> Cannot continue without a driver. Breaking operation." -ForegroundColor Red
-                pause
-                Get-Process -Name powershell | Stop-Process -Force
-
-            }
-            else {
-                Write-Host "> Error: Please enter Y or N." -ForegroundColor Red
-                $ans = Read-Host -Prompt "Manual input? (Y/N)"
-            }
-        }
-    }
-}
-
-function ManualDriverName {
-    try {
-        $driverPath = Read-Host -Prompt "Enter the driver path:"
-        $printerDriver = (Get-ChildItem -Path $driverPath -Filter "*.inf").Name
-        #get the first file with .inf extension
-        $printerDriverFile = $printerDriver.Split(" ")[0]
-        $printerDriver = pnputil.exe -a "$driverPath\$printerDriverFile" | Select-String -Pattern "Driver name"
-
-        Write-Host "> The driver name is $printerDriver" -ForegroundColor Green
-        installPrinter
-    }
-    catch {
-        Write-Host "> Error: The driver name could not be found." -ForegroundColor Red
-        $ans = Read-Host -Prompt "Manual input? (Y/N)"
-        while ($True) {
-            if ($ans.ToLower() -eq "y") {
-                ManualDriverName
-                break
-            }
-            elseif ($ans.ToLower() -eq "n") {
-                Write-Host "> Cannot continue without a driver. Breaking operation." -ForegroundColor Red
-                pause
-                Get-Process -Name powershell | Stop-Process -Force
-
-            }
-            else {
-                Write-Host "> Error: Please enter Y or N." -ForegroundColor Red
-                $ans = Read-Host -Prompt "Manual input? (Y/N)"
             }
         }
     }
