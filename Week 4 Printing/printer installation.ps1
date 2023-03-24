@@ -179,17 +179,6 @@ function installPrinter {
             $printerName = Read-Host -Prompt "Do you wish to overwrite it? (can cause problems)"
         }
     }
-    $tempprinterPort = Read-Host -Prompt "Enter the printer port:"
-    while ($printerPort -eq "") {
-        Write-Host "> Error: The printer port cannot be empty." -ForegroundColor Red
-        $tempprinterPort = Read-Host -Prompt "Enter the printer port [no ip address!]:"
-        #check if the printerport is already in use
-        while (Get-PrinterPort -Name $tempprinterPort -ErrorAction SilentlyContinue) {
-            Write-Host "> Warning: The printer port is already in use." -ForegroundColor Yellow
-            $ans = Read-Host -Prompt "Do you wish to overwrite it? (can cause problems)"
-        }
-        $printerPort = $tempprinterPort
-    }
     $tempIPAddress = Read-Host -Prompt "Enter the printer IP address:"
     while ($printerIPAddress -eq "") {
         Write-Host "> Error: The printer IP address cannot be empty." -ForegroundColor Red
@@ -200,6 +189,18 @@ function installPrinter {
         } else {
             Write-Host "> Error: The IP address is not valid." -ForegroundColor Red
         }
+    }
+
+    $tempprinterPort = Read-Host -Prompt "Enter the printer port:"
+    while ($printerPort -eq "") {
+        Write-Host "> Error: The printer port cannot be empty." -ForegroundColor Red
+        $tempprinterPort = Read-Host -Prompt "Enter the printer port [no ip address!]:"
+        #check if the printerport is already in use
+        while (Get-PrinterPort -Name $tempprinterPort -ErrorAction SilentlyContinue) {
+            Write-Host "> Warning: The printer port is already in use." -ForegroundColor Yellow
+            $tempprinterPort = Read-Host -Prompt "Enter the printer port [no ip address!]"
+        }
+        $printerPort =  $printerIPAddress + " _ " + $tempprinterPort
     }
 
     try {
