@@ -112,12 +112,12 @@ function installPrinterDriver {
     }
 
     Write-Host "> Downloading the file from $url to $outputPath\$outputFile" -ForegroundColor Green
-    Write-Host "> !!! Don't forget to copy your driver to the path you unzip the file to !!!" -ForegroundColor Yellow
-    Write-Host "> !!! Don't forget to copy your driver to the path you unzip the file to !!!" -ForegroundColor Yellow
-    Write-Host "> !!! Don't forget to copy your driver to the path you unzip the file to !!!" -ForegroundColor Yellow
-    Write-Host "> !!! Don't forget to copy your driver to the path you unzip the file to !!!" -ForegroundColor Yellow
-    Write-Host "> !!! Don't forget to copy your driver to the path you unzip the file to !!!" -ForegroundColor Yellow
-    Write-Host "> !!! Don't forget to copy your driver to the path you unzip the file to !!!" -ForegroundColor Yellow
+    Write-Host "> !!! Don't forget to copy your path you unzip the file to !!!" -ForegroundColor Yellow
+    Write-Host "> !!! Don't forget to copy your path you unzip the file to !!!" -ForegroundColor Yellow
+    Write-Host "> !!! Don't forget to copy your path you unzip the file to !!!" -ForegroundColor Yellow
+    Write-Host "> !!! Don't forget to copy your path you unzip the file to !!!" -ForegroundColor Yellow
+    Write-Host "> !!! Don't forget to copy your path you unzip the file to !!!" -ForegroundColor Yellow
+    Write-Host "> !!! Don't forget to copy your path you unzip the file to !!!" -ForegroundColor Yellow
 
     try {
         # Download the file
@@ -140,6 +140,8 @@ function installPrinterDriver {
         }
 
         $printerDriver = (Get-ChildItem -Path $driverPath -Filter "*.inf").Name
+        #get the first file with .inf extension
+        $printerDriver = $printerDriver.Split(" ")[0]
         Write-Host "> The driver name is $printerDriver" -ForegroundColor Green
 
         installPrinter
@@ -198,21 +200,43 @@ function installPrinter {
         #check if the printerport is already in use
         while (Get-PrinterPort -Name $tempprinterPort -ErrorAction SilentlyContinue) {
             Write-Host "> Warning: The printer port is already in use." -ForegroundColor Yellow
-            $tempprinterPort = Read-Host -Prompt "Enter the printer port [no ip address!]"
         }
-        $printerPort =  $printerIPAddress + " _ " + $tempprinterPort
+        $printerPort =  $printerIPAddress + "_" + $tempprinterPort
     }
 
     try {
         # Add the printer port
         Add-PrinterPort -Name $printerPort -PrinterHostAddress $printerIPAddress
+        Write-Host "> The printer port has been added." -ForegroundColor Green
 
         # Install the printer driver
         Add-PrinterDriver -Name $printerDriver -InfPath "$driverPath\hpcu187v.inf"
+        Write-Host "> The printer driver has been installed." -ForegroundColor Green
 
         # Add the printer
         Add-Printer -Name $printerName -DriverName $printerDriver -PortName $printerPort
-    
+        Write-Host "> The printer has been added." -ForegroundColor Green
+        Write-Host "> The printer is shared as $shareName." -ForegroundColor Green
+        Write-Host "> The printer is located at $printerLocation." -ForegroundColor Green
+        Write-Host "> The printer is available at \\$env:COMPUTERNAME\$shareName." -ForegroundColor Green
+        $ans = Read-Host -Prompt "Would you like to print a test page? (Y/N)"
+        while ($True) {
+            if ($ans.ToLower() -eq "y") {
+                Write-Host "> Printing a test page." -ForegroundColor Green
+                PrintTestPage
+                break
+            }
+            elseif ($ans.ToLower() -eq "n") {
+                Write-Host "> No test page is printed." -ForegroundColor Green
+                
+                break
+            }
+            else {
+                Write-Host "> Error: Please enter Y or N." -ForegroundColor Red
+                $ans = Read-Host -Prompt "Would you like to print a test page? (Y/N)"
+            }
+        }
+
         # Share the printer
         $ans = Read-Host -Prompt "Do you want to share the printer? (Y/N)"
         while ($True) {
@@ -237,28 +261,6 @@ function installPrinter {
             else {
                 Write-Host "> Error: Please enter Y or N." -ForegroundColor Red
                 $ans = Read-Host -Prompt "Do you want to share the printer? (Y/N)"
-            }
-        }
-        
-        Write-Host "> The printer has been installed." -ForegroundColor Green
-        Write-Host "> The printer is shared as $shareName." -ForegroundColor Green
-        Write-Host "> The printer is located at $printerLocation." -ForegroundColor Green
-        Write-Host "> The printer is available at \\$env:COMPUTERNAME\$shareName." -ForegroundColor Green
-        $ans = Read-Host -Prompt "Would you like to print a test page? (Y/N)"
-        while ($True) {
-            if ($ans.ToLower() -eq "y") {
-                Write-Host "> Printing a test page." -ForegroundColor Green
-                PrintTestPage
-                break
-            }
-            elseif ($ans.ToLower() -eq "n") {
-                Write-Host "> No test page is printed." -ForegroundColor Green
-                
-                break
-            }
-            else {
-                Write-Host "> Error: Please enter Y or N." -ForegroundColor Red
-                $ans = Read-Host -Prompt "Would you like to print a test page? (Y/N)"
             }
         }
         
