@@ -1,9 +1,6 @@
 function checkIP {
-    # Parameter help description
-    [Parameter(AttributeValues)]
-    [ParameterType]
-    $tempIPAddress
-
+    [ParameterType] [string]$tempIPAddress
+    
     if ($tempIPAddress -match "(\b25[0-5]|\b2[0-4][0-9]|\b[01]?[0-9][0-9]?)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}" -and $tempIPAddress -as [IPAddress]) {
         return $True
     } 
@@ -176,20 +173,22 @@ function installPrinter {
     while ($printerName -eq "") {
         Write-Host "> Error: The printer name cannot be empty." -ForegroundColor Red
         $printerName = Read-Host -Prompt "Enter the printer name:"
+        #check if the printername is already in use
+        while (Get-Printer -Name $printerName -ErrorAction SilentlyContinue) {
+            Write-Host "> Warning: The printer name is already in use." -ForegroundColor Yellow
+            $printerName = Read-Host -Prompt "Do you wish to overwrite it? (can cause problems)"
+        }
     }
     $tempprinterPort = Read-Host -Prompt "Enter the printer port:"
     while ($printerPort -eq "") {
         Write-Host "> Error: The printer port cannot be empty." -ForegroundColor Red
         $tempprinterPort = Read-Host -Prompt "Enter the printer port [no ip address!]:"
         #check if the printerport is already in use
-        if (Get-PrinterPort -Name $tempprinterPort) {
+        while (Get-PrinterPort -Name $tempprinterPort -ErrorAction SilentlyContinue) {
             Write-Host "> Warning: The printer port is already in use." -ForegroundColor Yellow
             $ans = Read-Host -Prompt "Do you wish to overwrite it? (can cause problems)"
-        } else {
-            $printerPort = $tempprinterPort
         }
-
-        $printerPort
+        $printerPort = $tempprinterPort
     }
     $tempIPAddress = Read-Host -Prompt "Enter the printer IP address:"
     while ($printerIPAddress -eq "") {
@@ -248,7 +247,7 @@ function installPrinter {
         while ($True) {
             if ($ans.ToLower() -eq "y") {
                 Write-Host "> Printing a test page." -ForegroundColor Green
-                Print-TestPage
+                PrintTestPage
                 break
             }
             elseif ($ans.ToLower() -eq "n") {
@@ -283,7 +282,7 @@ function installPrinter {
     }
 }
 
-function Print-TestPage {
+function PrintTestPage {
     # Print a test page
     $printer = Get-Printer -Name $printerName
     if ($printer) {
