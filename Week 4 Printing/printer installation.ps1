@@ -239,15 +239,17 @@ function installPrinter {
         }
     }
 
-    $tempprinterPort = Read-Host -Prompt "Enter the printer port:"
+    $tempPort = Read-Host -Prompt "Enter the printer port:"
     while ($printerPort -eq "") {
         Write-Host "> Error: The printer port cannot be empty." -ForegroundColor Red
-        $tempprinterPort = Read-Host -Prompt "Enter the printer port [no ip address!]:"
+        $tempPort = Read-Host -Prompt "Enter the printer port [no ip address!]:"
         #check if the printerport is already in use
-        while (Get-PrinterPort -Name $tempprinterPort) {
+        $tempPort = $printerIPAddress + "_" + $tempPort
+        if (Get-PrinterPort -Name $tempPort) {
             Write-Host "> Warning: The printer port is already in use." -ForegroundColor Yellow
+        } else {
+            $printerPort = $tempPort
         }
-        $printerPort = $printerIPAddress + "_" + $tempprinterPort
     }
 
     try {
