@@ -157,7 +157,8 @@ function  getDriverName {
     try {
         $printerDriver = (Get-ChildItem -Path $driverPath -Filter "*.inf").Name
         #get the first file with .inf extension
-        $printerDriver = $printerDriver.Split(" ")[0]
+        $printerDriverFile = $printerDriver.Split(" ")[0]
+        $printerDriver = pnputil.exe -a "$driverPath\$printerDriverFile" | Select-String -Pattern "Driver name"
         Write-Host "> The driver name is $printerDriver" -ForegroundColor Green
         installPrinter
     }
@@ -188,7 +189,9 @@ function ManualDriverName {
         $driverPath = Read-Host -Prompt "Enter the driver path:"
         $printerDriver = (Get-ChildItem -Path $driverPath -Filter "*.inf").Name
         #get the first file with .inf extension
-        $printerDriver = $printerDriver.Split(" ")[0]
+        $printerDriverFile = $printerDriver.Split(" ")[0]
+        $printerDriver = pnputil.exe -a "$driverPath\$printerDriverFile" | Select-String -Pattern "Driver name"
+
         Write-Host "> The driver name is $printerDriver" -ForegroundColor Green
         installPrinter
     }
@@ -227,29 +230,16 @@ function installPrinter {
             $printerName = Read-Host -Prompt "Do you wish to overwrite it? (can cause problems)"
         }
     }
-    $tempIPAddress = Read-Host -Prompt "Enter the printer IP address:"
+    $printerIPAddress = Read-Host -Prompt "Enter the printer IP address:"
     while ($printerIPAddress -eq "") {
         Write-Host "> Error: The printer IP address cannot be empty." -ForegroundColor Red
-        $tempIPAddress = Read-Host -Prompt "Enter the printer IP address:"
-        if(checkIP($tempIPAddress)) {
-            #check if there is already a print instaal with this ip
-            $printerIPAddress = $tempIPAddress
-        } else {
-            Write-Host "> Error: The IP address is not valid." -ForegroundColor Red
-        }
+        $printerIPAddress = Read-Host -Prompt "Enter the printer IP address:"
     }
 
-    $tempPort = Read-Host -Prompt "Enter the printer port:"
+    $printerPort = Read-Host -Prompt "Enter the printer port:"
     while ($printerPort -eq "") {
         Write-Host "> Error: The printer port cannot be empty." -ForegroundColor Red
-        $tempPort = Read-Host -Prompt "Enter the printer port [no ip address!]:"
-        #check if the printerport is already in use
-        $tempPort = $printerIPAddress + "_" + $tempPort
-        if (Get-PrinterPort -Name $tempPort) {
-            Write-Host "> Warning: The printer port is already in use." -ForegroundColor Yellow
-        } else {
-            $printerPort = $tempPort
-        }
+        $printerPort = Read-Host -Prompt "Enter the printer port [no ip address!]:"
     }
 
     try {
