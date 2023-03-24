@@ -21,6 +21,7 @@ Install-ADDSForest `
     -Force:$true `
     -NoRebootOnCompletion:$true `
     -Confirm:$false
+    -Force:$true
 
 # Check if necessary role(s) are installed
 $roles = Get-WindowsFeature | Where-Object {$_.Name -eq "AD-Domain-Services" -or $_.Name -eq "DNS"}
@@ -75,18 +76,14 @@ if ($dnsServers[0] -ne $preferredDNSServer -or $dnsServers[1] -ne $alternateDNSS
     Write-Host "Local DNS servers already set correctly."
 }
 
-# Variables
-$subnet = "255.255.255.0/24"
-$zoneName = "mct.be"
-$dnsServer = "mct.be"
+# create reverse lookup zone
+$subnet = "192.168.1.0/24"
+Add-DnsServerPrimaryZone `
+ -ComputerName $dcName `
+ -NetworkId $subnet `
+ -ReplicateSope "Forest"
 
-# Create reverse lookup zone for subnet
-Add-DnsServerPrimaryZone -NetworkId "$subnet" -ZoneName $zoneName
-
-# Add pointer record for domain controller in reverse lookup zone
-$ptrRecord = "$dcIPAddress.in-addr.arpa"
-Add-DnsServerResourceRecordPtr -ZoneName $zoneName -Name $ptrRecord -PtrDomainName $dnsServer -CreatePtr
-Write-Host "Pointer record added for $dnsServer in $zoneName."
+Register-DnsClient
 
 # Rename default first site
 Set-ADSite -Identity "Default-First-Site-Name" -Name $dcsiteName
@@ -96,11 +93,11 @@ Set-ADSite -Identity $dcsiteName -Add @{"Subnets" = $subnet}
 Write-Host "Subnet $subnet added to $dcsiteName."
 
 # Variables
-$dhcpScope = "192.168.100.0"
+$dhcpScope = "192.168.1.0"
 $dhcpRangeStart = "192.168.100.2"
 $dhcpRangeEnd = "192.168.100.252"
 $dhcpSubnetMask = "255.255.255.0"
-$dhcpRouter = "192.168.100.0"
+$dhcpRouter = "192.168.1.0"
 $dhcpDNSServers = "192.168.100.254", "192.168.100.253"
 
 # Check if DHCP server role is installed and install if necessary
@@ -115,6 +112,7 @@ if ((Get-WindowsFeature -Name DHCP).Installed -ne "True") {
 Add-DhcpServerv4Scope -Name "Main Scope" -StartRange $dhcpRangeStart -EndRange $dhcpRangeEnd -SubnetMask $dhcpSubnetMask -ScopeId $dhcpScope -State Active
 Set-DhcpServerv4OptionValue -OptionId 3 -Value $dhcpRouter -ScopeId $dhcpScope
 Set-DhcpServerv4OptionValue -OptionId 6 -Value $dhcpDNSServers -ScopeId $dhcpScope
+Set-DhcpServerv4OptionValue -OptionId 15 -Value $domainName
 
 # Authorize DHCP server and remove warning in Server Manager
 Add-DhcpServerInDC -DnsName $env:COMPUTERNAME -IPAddress $dcIPAddress

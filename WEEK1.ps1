@@ -75,7 +75,7 @@ Rename-Computer -NewName $ComputerName -WhatIf
 Write-Host "Computer renamed to $ComputerName successfully a reboot is required" -ForegroundColor Green
 $ans = Read-Host "reboot now? (y/n) "
 if ($ans -eq "y") {
-    Restart-Computer -WhatIf
+    Restart-Computer -Confirm:$false -WhatIf
 } else {
     Write-Host "reboot later" -ForegroundColor Green
 }
