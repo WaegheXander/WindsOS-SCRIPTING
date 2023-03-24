@@ -50,11 +50,12 @@ function checkPrinterDriver {
     Get-PrinterDriver
     Write-Host ""
     $ans = Read-Host -Prompt "Do you see your printer driver? (Y/N)"
-    while ($ans.ToLower() -ne "") {
+    while ($True) {
         if ($ans.ToLower() -eq "y") {
             Write-Host "> The printer driver is installed." -ForegroundColor Green
             Write-Host "> Skipping to installing the printer." -ForegroundColor Green
             installPrinter
+            break
         }
         elseif ($ans.ToLower() -eq "n") {
             Write-Host "> The printer driver is not installed." -ForegroundColor Yellow
@@ -62,6 +63,7 @@ function checkPrinterDriver {
             # Install the printer driver
             installPrinterDriver
             Write-Host "> The printer driver has been installed." -ForegroundColor Green
+            break
             
         }
         else {
@@ -100,6 +102,12 @@ function installPrinterDriver {
 
     Write-Host "> Downloading the file from $url to $outputPath\$outputFile" -ForegroundColor Green
     Write-Host "> !!! Don't forget to copy your driver to the path you unzip the file to !!!" -ForegroundColor Yellow
+    Write-Host "> !!! Don't forget to copy your driver to the path you unzip the file to !!!" -ForegroundColor Yellow
+    Write-Host "> !!! Don't forget to copy your driver to the path you unzip the file to !!!" -ForegroundColor Yellow
+    Write-Host "> !!! Don't forget to copy your driver to the path you unzip the file to !!!" -ForegroundColor Yellow
+    Write-Host "> !!! Don't forget to copy your driver to the path you unzip the file to !!!" -ForegroundColor Yellow
+    Write-Host "> !!! Don't forget to copy your driver to the path you unzip the file to !!!" -ForegroundColor Yellow
+
     try {
         # Download the file
         Invoke-WebRequest -Uri $url -OutFile "$outputPath\$outputFile"
@@ -128,7 +136,7 @@ function installPrinterDriver {
     catch {
         Write-Host "> Error: The file could not be downloaded." -ForegroundColor Red
         $ans = Read-Host -Prompt "Try again? (Y/N)"
-        while ($ans.ToLower() -ne "") {
+        while ($True) {
             if ($ans.ToLower() -eq "y") {
                 installPrinterDriver
                 break
@@ -165,7 +173,7 @@ function installPrinter {
     
         # Share the printer
         $ans = Read-Host -Prompt "Do you want to share the printer? (Y/N)"
-        while ($ans.ToLower() -ne "") {
+        while ($True) {
             if ($ans -eq "y") {
                 $shareName = Read-Host -Prompt "Enter the share name:"
                 while ($shareName -eq "") {
@@ -195,7 +203,7 @@ function installPrinter {
         Write-Host "> The printer is located at $printerLocation." -ForegroundColor Green
         Write-Host "> The printer is available at \\$env:COMPUTERNAME\$shareName." -ForegroundColor Green
         $ans = Read-Host -Prompt "Would you like to print a test page? (Y/N)"
-        while ($ans.ToLower() -ne "") {
+        while ($True) {
             if ($ans.ToLower() -eq "y") {
                 Write-Host "> Printing a test page." -ForegroundColor Green
                 Print-TestPage
@@ -216,9 +224,9 @@ function installPrinter {
     catch {
         Write-Host "> Error: The printer could not be installed." -ForegroundColor Red
         $ans = Read-Host -Prompt "Try again? (Y/N)"
-        while ($ans.ToLower() -ne "") {
+        while ($True) {
             if ($ans.ToLower() -eq "y") {
-                installPrinter
+                checkPrinterDriver
                 break
             }
             elseif ($ans.ToLower() -eq "n") {
@@ -227,7 +235,7 @@ function installPrinter {
             }
             else {
                 Write-Host "> Error: Please enter Y or N." -ForegroundColor Red
-                $ans = Read-Host -Prompt "Do you see your printer driver? (Y/N)"
+                $ans = Read-Host -Prompt "Try again? (Y/N)"
             }
         }
     }

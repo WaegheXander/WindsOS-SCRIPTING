@@ -1,69 +1,3 @@
-function Install-PrinterServices {
-    # Check if Print and Document Services feature is installed
-    if (!(Get-WindowsFeature -Name Print-Services -ErrorAction SilentlyContinue | Where-Object {$_.Installed})) {
-        # Install Print and Document Services feature
-        Write-Host "> Installing Print and Document Services feature..." -ForegroundColor Yellow
-        Install-WindowsFeature -Name Print-Services -IncludeAllSubFeature -Restart -Verbose
-        Write-Host "> Print and Document Services feature installed successfully." -ForegroundColor Green
-    }
-    else {
-        Write-Host "> Print and Document Services feature is already installed." -ForegroundColor DarkGreen
-    }
-    #continue to change the spool directory
-    changeSpool
-}
-
-function changeSpool {
-    # Define registry path and new spool directory
-    $registryPath = "HKLM:\SYSTEM\CurrentControlSet\Control\Print\Printers"
-    $newSpoolDirectory = "C:\Spool"
-    
-    # Check if new spool directory exists, create it if not
-    if (!(Test-Path $newSpoolDirectory)) {
-        Write-Host "> $newSpoolDirectory directory not found" -ForegroundColor Yellow
-        New-Item -ItemType Directory -Path $newSpoolDirectory | Out-Null
-        Write-Host "> The new spool directory $newSpoolDirectory has been created." -ForegroundColor Green
-    } else {
-        Write-Host "> The new spool directory $newSpoolDirectory exists." -ForegroundColor Green
-    }
-    
-    # Check if the registry key exists and set the new spool directory
-    if (Test-Path $registryPath) {
-        $currentSpoolDirectory = Get-ItemProperty -Path $registryPath -Name DefaultSpoolDirectory
-        if ($currentSpoolDirectory -ne $newSpoolDirectory) {
-            Set-ItemProperty -Path $registryPath -Name DefaultSpoolDirectory -Value $newSpoolDirectory
-            Write-Host "> The DefaultSpoolDirectory key has been changed to $newSpoolDirectory." -ForegroundColor Green
-        } else {
-            Write-Host "> The DefaultSpoolDirectory key is already configured correctly." -ForegroundColor Green
-        }   
-    } else {
-        Write-Host "> Error: The registry key $registryPath does not exist." -ForegroundColor Red
-        Write-Host "> Warning: Skipping the change of the DefaultSpoolDirectory key." -ForegroundColor Yellow
-        if ($currentSpoolDirectory) {
-            Write-Host "> Warning: DefaultSpoolDirectory: $currentSpoolDirectory" -ForegroundColor Yellow
-        }
-    } 
-    checkPrinterDriver() 
-}
-
-function checkPrinterDriver {
-    # Check if the printer driver is installed
-    $printerDriver = Get-PrinterDriver -Name "Your Printer Driver Name"
-    if ($printerDriver) {
-        Write-Host "> The printer driver is installed." -ForegroundColor Green
-        Write-Host "> Skipping to installing the printer." -ForegroundColor Green
-        installPrinter
-    }
-    else {
-        Write-Host "> The printer driver is not installed." -ForegroundColor Yellow
-        Write-Host "> Installing the printer driver." -ForegroundColor Yellow
-        # Install the printer driver
-        installPrinterDriver
-        Write-Host "> The printer driver has been installed." -ForegroundColor Green
-    }
-}
-
-
 function installPrinterDriver {
     $url = "https://ftp.hp.com/pub/softlib/software13/COL40842/ds-99374-24/upd-pcl6-x64-7.0.1.24923.exe"
     $outputPath = "C:\Temp"
@@ -107,8 +41,8 @@ function installPrinterDriver {
             $driverPath = Read-Host -Prompt "Enter the path where you extracted the driver files:"
         }
         
-        $driverName = (Get-ChildItem -Path $driverPath -Filter "*.inf").Name
-        Write-Host "> The driver name is $driverName" -ForegroundColor Green
+        $printerDriver = (Get-ChildItem -Path $driverPath -Filter "*.inf").Name
+        Write-Host "> The driver name is $printerDriver" -ForegroundColor Green
         
         installPrinter()
     }
@@ -122,11 +56,12 @@ function installPrinterDriver {
             }
             elseif ($ans -eq "n") {
                 Write-Host "> Cannot continue without a driver. Breaking operation." -ForegroundColor Red
-                break
+                pause
+                Get-Process -Name powershell | Stop-Process -Force
             }
             else {
                 Write-Host "> Error: Please enter Y or N." -ForegroundColor Red
-                $ans = Read-Host -Prompt "Do you want to try again? (Y/N)"
+                $ans = Read-Host -Prompt "Try again? (Y/N)"
             }
         }
     }
@@ -135,7 +70,6 @@ function installPrinterDriver {
 function installPrinter {
     # Install and share a network printer, with IP address 172.23.80.3, with that driver.
     $printerName = "HP Printer"
-    $printerDriver = "HP Universal Printing PCL 6"
     $printerDriverPath = $driverPath
     $printerPort = "IP_172.23.80.3"
     $printerIPAddress = "172.23.80.3"
