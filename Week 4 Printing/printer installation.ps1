@@ -1,3 +1,17 @@
+function checkIP {
+    # Parameter help description
+    [Parameter(AttributeValues)]
+    [ParameterType]
+    $tempIPAddress
+
+    if ($tempIPAddress -match "(\b25[0-5]|\b2[0-4][0-9]|\b[01]?[0-9][0-9]?)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}" -and $tempIPAddress -as [IPAddress]) {
+        return $True
+    } 
+    else {
+        return $False
+    }
+}
+
 function Install-PrinterServices {
     # Check if Print and Document Services feature is installed
     if (!(Get-WindowsFeature -Name Print-Services -ErrorAction SilentlyContinue | Where-Object {$_.Installed})) {
@@ -157,9 +171,37 @@ function installPrinterDriver {
 
 function installPrinter {
     # Install and share a network printer, with IP address 172.23.80.3, with that driver.
-    $printerName = "HP Printer"
-    $printerPort = "IP_172.23.80.3"
-    $printerIPAddress = "172.23.80.3"
+
+    $printerName = Read-Host -Prompt "Enter the printer name:"
+    while ($printerName -eq "") {
+        Write-Host "> Error: The printer name cannot be empty." -ForegroundColor Red
+        $printerName = Read-Host -Prompt "Enter the printer name:"
+    }
+    $tempprinterPort = Read-Host -Prompt "Enter the printer port:"
+    while ($printerPort -eq "") {
+        Write-Host "> Error: The printer port cannot be empty." -ForegroundColor Red
+        $tempprinterPort = Read-Host -Prompt "Enter the printer port [no ip address!]:"
+        #check if the printerport is already in use
+        if (Get-PrinterPort -Name $tempprinterPort) {
+            Write-Host "> Warning: The printer port is already in use." -ForegroundColor Yellow
+            $ans = Read-Host -Prompt "Do you wish to overwrite it? (can cause problems)"
+        } else {
+            $printerPort = $tempprinterPort
+        }
+
+        $printerPort
+    }
+    $tempIPAddress = Read-Host -Prompt "Enter the printer IP address:"
+    while ($printerIPAddress -eq "") {
+        Write-Host "> Error: The printer IP address cannot be empty." -ForegroundColor Red
+        $tempIPAddress = Read-Host -Prompt "Enter the printer IP address:"
+        if(checkIP($tempIPAddress)) {
+            #check if there is already a print instaal with this ip
+            $printerIPAddress = $tempIPAddress
+        } else {
+            Write-Host "> Error: The IP address is not valid." -ForegroundColor Red
+        }
+    }
 
     try {
         # Add the printer port
