@@ -48,7 +48,18 @@ while ($MaskBits -lt 0 -or $MaskBits -gt 32) {
 
 try {
     Write-Host "> Setting IP address"
-    $adapter = Get-NetAdapter -Name Ethernet # get ethernet adapter
+    Get-NetAdapter -Name Ethernet0
+
+    $ans = Read-Host "Enter the number of the network adapter"
+    while ($ans -lt 0 -or $ans -gt 999) {
+        try {
+            $adapter = Get-NetAdapter -Name Ethernet$ans # get ethernet adapter
+        }
+        catch {
+            Write-Host "> Error: Invalid adapter number" -ForegroundColor Red
+            $ans = -1
+        }
+    }
     $adapter | Set-NetIPInterface -Dhcp Disabled # disable dhcp
     Write-Host "> DHCP disabled" -ForegroundColor Green
 
