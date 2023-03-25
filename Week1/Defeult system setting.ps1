@@ -24,26 +24,26 @@ while (!(checkValidIP $ip)) {
 
 $gateway = Read-Host "Enter a valid gateway address"
 while (!(checkValidIP $gateway)) {
-    Write-Host "> Error: Invalid IP address" -ForegroundColor Red
+    Write-Host "> Error: Invalid gateway address" -ForegroundColor Red
     $gateway = Read-Host "Enter a valid gateway address"
 }
 
 $dnsPrim = Read-Host "Enter a valid DNS address"
 while (!(checkValidIP $dnsPrim)) {
-    Write-Host "> Error: Invalid IP address" -ForegroundColor Red
+    Write-Host "> Error: Invalid DNS address" -ForegroundColor Red
     $dnsPrim = Read-Host "Enter a valid DNS address"
 }
 
 $dnsSecd = Read-Host "Enter a valid alternet DNS address"
 while (!(checkValidIP $dnsSecd)) {
-    Write-Host "> Error: Invalid address" -ForegroundColor Red
+    Write-Host "> Error: Invalid DNS address" -ForegroundColor Red
     $dnsSecd = Read-Host "Enter a valid alternet DNS address"
 }
 
 $MaskBits = Read-Host "Enter a maskbits (ex 24))"
-while (!(checkValidIP $MaskBits)) {
-    Write-Host "> Error: Invalid address" -ForegroundColor Red
-    $MaskBits = Read-Host "Enter a valid alternet DNS address"
+while ($MaskBits -lt 0 -or $MaskBits -gt 32) {
+    Write-Host "> Error: Invalid MaskBit" -ForegroundColor Red
+    $MaskBits = Read-Host "Enter a maskbits (ex 24))"
 }
 
 try {
