@@ -50,11 +50,12 @@ Restart-Service -Name TermService -WhatIf
 
 Write-Host "Remote desktop enabled successfully" -ForegroundColor Green
 
+
 # disable the IE Enhanced Security Setting
 $AdminKey = "HKLM:\SOFTWARE\Microsoft\Active Setup\Installed Components\{A509B1A7-37EF-4b3f-8CFC-4F3A74704073}"
 $UserKey = "HKLM:\SOFTWARE\Microsoft\Active Setup\Installed Components\{A509B1A8-37EF-4b3f-8CFC-4F3A74704073}"
-Set-ItemProperty -Path $AdminKey -Name "IsInstalled" -Value 0 -WhatIf
-Set-ItemProperty -Path $UserKey -Name "IsInstalled" -Value 0 -WhatIf
+Set-ItemProperty -Path $AdminKey -Name "IsInstalled" -Value 0
+Set-ItemProperty -Path $UserKey -Name "IsInstalled" -Value 0
 
 #stop internet explorer to apply the changes
 Stop-Process -Name Explorer -WhatIf
@@ -62,7 +63,7 @@ Write-Host "IE Enhanced Security Setting disabled successfully" -ForegroundColor
 
 # enable the control panel view to be set to small icons
 # Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\ControlPanel" -Name "StartupPage" -Type DWord -Value 1
-Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\ControlPanel" -Name "AllItemsIconView" -Type DWord -Value 1 -WhatIf
+Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\ControlPanel\AllItemsIconView." -Value 1 -WhatIf
 
 Write-Host "Control panel view set to small icons successfully" -ForegroundColor Green
 
