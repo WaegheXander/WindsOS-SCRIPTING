@@ -98,21 +98,26 @@ if((Get-TimeZone).BaseUtcOffset -eq ([TimeSpan]::FromHours(1))) {
 }
 
 $ans = Read-Host "Do you want to enable remote desktop? (y/n)"
-while (($ans -ne "y") -or ($ans -ne "n")) {
-    if($ans -eq "y") {
+while (($ans.ToLower() -ne "y") -or ($ans.ToLower() -ne "n")) {
+    if($ans.ToLower() -eq "y") {
         Write-Host "> Enabling remote desktop"
         # enable remote desktop
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
         # enable firewall rule
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
         Write-Host "> Remote desktop enabled successfully" -ForegroundColor Green
-    } elseif ($ans -eq "n")  {
+        break
+    } elseif ($ans.ToLower() -eq "n")  {
         Write-Host "> Disabling remote desktop"
         # disable remote desktop
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -value 1
         # disable firewall rule
         Disable-NetFirewallRule -DisplayGroup "Remote Desktop"
         Write-Host "> Remote desktop disabled successfully" -ForegroundColor Green
+        break
+    } else {
+        Write-Host "> Error: Invalid input" -ForegroundColor Red
+        $ans = Read-Host "Do you want to enable remote desktop? (y/n)"
     }
 }
 
