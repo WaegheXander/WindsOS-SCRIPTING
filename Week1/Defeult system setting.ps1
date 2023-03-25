@@ -50,14 +50,14 @@ try {
     Write-Host "> Setting IP address"
     Get-NetAdapter -Name Ethernet0
 
-    $ans = Read-Host "Enter the number of the network adapter"
-    while ($ans -lt 0 -or $ans -gt 999) {
+    $adapterNR = Read-Host "Enter the number of the network adapter"
+    while ($adapterNR -lt 0 -or $adapterNR -gt 999) {
         try {
-            $adapter = Get-NetAdapter -Name Ethernet$ans # get ethernet adapter
+            $adapter = Get-NetAdapter -Name Ethernet$adapterNR # get ethernet adapter
         }
         catch {
             Write-Host "> Error: Invalid adapter number" -ForegroundColor Red
-            $ans = -1
+            $adapterNR = -1
         }
     }
     $adapter | Set-NetIPInterface -Dhcp Disabled # disable dhcp
@@ -79,7 +79,7 @@ try {
     
 
     # Set the DNS servers
-    Set-DnsClientServerAddress -InterfaceAlias Ethernet -ServerAddresses ($dnsPrim,$dnsSecd)
+    Set-DnsClientServerAddress -InterfaceAlias Ethernet$adapterNR -ServerAddresses ($dnsPrim,$dnsSecd)
     Write-Host "> IP address & DNS servers set successfully" -ForegroundColor Green
 }
 catch {
@@ -105,8 +105,6 @@ while (($ans -ne "y") -or ($ans -ne "n")) {
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
         # enable firewall rule
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-        # restart the remote desktop service to apply the changes
-        Restart-Service -Name TermService
         Write-Host "> Remote desktop enabled successfully" -ForegroundColor Green
     } elseif ($ans -eq "n")  {
         Write-Host "> Disabling remote desktop"
@@ -114,8 +112,6 @@ while (($ans -ne "y") -or ($ans -ne "n")) {
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -value 1
         # disable firewall rule
         Disable-NetFirewallRule -DisplayGroup "Remote Desktop"
-        # restart the remote desktop service to apply the changes
-        Restart-Service -Name TermService
         Write-Host "> Remote desktop disabled successfully" -ForegroundColor Green
     }
 }
@@ -126,9 +122,6 @@ $AdminKey = "HKLM:\SOFTWARE\Microsoft\Active Setup\Installed Components\{A509B1A
 $UserKey = "HKLM:\SOFTWARE\Microsoft\Active Setup\Installed Components\{A509B1A8-37EF-4b3f-8CFC-4F3A74704073}"
 Set-ItemProperty -Path $AdminKey -Name "IsInstalled" -Value 0
 Set-ItemProperty -Path $UserKey -Name "IsInstalled" -Value 0
-
-#stop internet explorer to apply the changes
-Stop-Process -Name Explorer
 Write-Host "IE Enhanced Security Setting disabled successfully" -ForegroundColor Green 
 
 
@@ -147,7 +140,6 @@ Write-Host "> Control Panel view set to small icons" -ForegroundColor Green
 # enable the file extension to be shown
 Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" HideFileExt "1"
 Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "HideFileExt" -Value 
-Stop-Process -Name Explorer
 Write-Host "File extension shown successfully" -ForegroundColor Green
 
 $ans = Read-Host "> What do you want to change the Hostname to? (q to quit)"
