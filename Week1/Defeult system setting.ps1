@@ -143,8 +143,7 @@ Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer
 Write-Host "> Control Panel view set to small icons" -ForegroundColor Green
 
 # enable the file extension to be shown
-Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" HideFileExt "1"
-Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "HideFileExt" -Value 
+Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "HideFileExt" -Value 1
 Write-Host "File extension shown successfully" -ForegroundColor Green
 
 $ans = Read-Host "> What do you want to change the Hostname to? (q to quit)"
