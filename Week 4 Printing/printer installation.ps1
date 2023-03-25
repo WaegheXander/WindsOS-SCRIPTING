@@ -2,7 +2,9 @@ $ans, $url, $outputPath, $outputFile, $registryPath, $newSpoolDirectory, $driver
 $driverPath = "C:\HP Universal Print Driver\pcl6-x64-7.0.1.24923"
 $printerDriver = "HP Universal Printing PCL 6"
 function checkIP {
-    [ParameterType] [string]$tempIPAddress
+    param (
+        $tempIPAddress
+    )
     
     if ($tempIPAddress -match "(\b25[0-5]|\b2[0-4][0-9]|\b[01]?[0-9][0-9]?)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}" -and $tempIPAddress -as [IPAddress]) {
         return $True
