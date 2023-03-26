@@ -51,22 +51,24 @@ try {
     Get-NetAdapter -Name Ethernet0
 
     $adapterNR = Read-Host "Enter the number of the network adapter"
-    while ($adapterNR -lt 0 -or $adapterNR -gt 999) {
-        try {
-            Get-NetAdapter -Name Ethernet$adapterNR # get ethernet adapter
-            $adapterName = Ethernet$adapterNR
-            break
-        }
-        catch {
+    while ($adapterNR -lt 0 -or $adapterNR -gt 10) {
+        if ($adapterNR -lt 0 -or $adapterNR -gt 10) {
             Write-Host "> Error: Invalid adapter number" -ForegroundColor Red
+            $adapterNR = Read-Host "Enter the number of the network adapter"
+        }
+        else {
+            $adapterName = "Ethernet" + $adapterNR
+            $adapter = Get-NetAdapter -Name $adapterName
+            break
         }
     }
 
-    Set-NetIPInterface -InterfaceAlias $adapterName -Dhcp Disabled
+    Set-NetIPInterface -InterfaceAlias "Ethernet" -Dhcp Disabled
     Write-Host "> DHCP disabled" -ForegroundColor Green
 
     #remove old ip address 
-    Get-NetIPAddress -InterfaceAlias $adapterName | Remove-NetIPAddress
+    $adapter | Remove-NetRoute -AddressFamily $IPType -Confirm:$false 
+    $adapter | Remove-NetIPAddress -AddressFamily $IPType -Confirm:$false
     Write-Host "> Old IP address removed" -ForegroundColor Green
 
     # Set the IP address
