@@ -54,10 +54,11 @@ try {
     while ($adapterNR -lt 0 -or $adapterNR -gt 999) {
         try {
             $adapter = Get-NetAdapter -Name Ethernet$adapterNR # get ethernet adapter
+            $adapterName = Ethernet$adapterNR
+            break
         }
         catch {
             Write-Host "> Error: Invalid adapter number" -ForegroundColor Red
-            $adapterNR = -1
         }
     }
     $adapter | Set-NetIPInterface -Dhcp Disabled # disable dhcp
@@ -69,17 +70,12 @@ try {
     Write-Host "> Old IP address removed" -ForegroundColor Green
 
     # Set the IP address
-    $adapter | New-NetIPAddress `
-        -IPAddress $ip `
-        -PrefixLength $MaskBits `
-        -DefaultGateway $gateway `
-        -InterfaceAlias Ethernet `
-        -AddressFamily $IPType
+    New-NetIPAddress -IPAddress $ip -PrefixLength $MaskBits -DefaultGateway $gateway -InterfaceAlias $adapterName -AddressFamily $IPType
     Write-Host "> IP address set successfully" -ForegroundColor Green
     
 
     # Set the DNS servers
-    Set-DnsClientServerAddress -InterfaceAlias Ethernet$adapterNR -ServerAddresses ($dnsPrim,$dnsSecd)
+    Set-DnsClientServerAddress -InterfaceAlias $adapterName -ServerAddresses ($dnsPrim,$dnsSecd)
     Write-Host "> IP address & DNS servers set successfully" -ForegroundColor Green
 }
 catch {
