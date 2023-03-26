@@ -10,6 +10,7 @@ $adminCreds = Get-Credential
 
 # Promote first server to DC
 Install-WindowsFeature AD-Domain-Services -IncludeManagementTools
+
 Import-Module ADDSDeployment
 Install-ADDSForest `
     -DomainName $forestName `
