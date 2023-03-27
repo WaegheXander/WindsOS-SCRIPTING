@@ -139,7 +139,7 @@ try {
     $CurrentDns = Get-DnsClientServerAddress -InterfaceIndex $nic;
     if ($CurrentDns.ServerAddresses -ne $DnsServers) {
         Write-Host "> Configuring DNS servers..." -ForegroundColor Yellow
-        $primDNS = Get-NetIPAddress -AddressFamily IPv4 -InterfaceAlias (Get-NetAdapter).Name | Where-Object { $_.AddressState -eq "Preferred" } | Select-Object -ExpandProperty IPAddress
+        $primDNS = Get-NetIPAddress -AddressFamily IPv4 -InterfaceIndex $nic | Select-Object -ExpandProperty IPAddress
         $secDNS = Read-Host "Enter the secondary DNS server"
         while (!($secDNS -as [IPAddress])) {
             Write-Host "> Error: Invalid IP address" -ForegroundColor Red
@@ -154,3 +154,59 @@ catch {
     Write-Error $_.Exception.Message
 }
 #endregion
+
+#
+# Configure Reverse Lookup Zone
+#region
+# Get the IP address and subnet of the Ethernet adapter automatically
+try {
+    $adapter = Get-NetIPAddress -AddressFamily IPv4 -InterfaceIndex $nic
+    $ipAddress = $adapter | Get-NetIPAddress -AddressFamily IPv4 | Select-Object -ExpandProperty IPAddress
+    $subnet = $adapter | Get-NetIPAddress -AddressFamily IPv4 | Select-Object -ExpandProperty PrefixLength
+    $networkAddress = ($ipAddress.Split(".")[0..2] -join ".") + ".0"
+    $netID = "$networkAddress/$subnet"
+
+    # Check if a reverse lookup zone exists for the subnet
+    $zoneName = (($netID -split '\.')[2, 1, 0] -join '.') + ".in-addr.arpa"
+    $zoneExists = Get-DnsServerZone -Name $zoneName -ErrorAction SilentlyContinue
+    if ($zoneExists) {
+        Write-Host "> Warning: Reverse lookup zone already exists." -ForegroundColor Yellow
+    }
+    else {
+        Write-Output "> Warning: Reverse lookup zone does not exist." -ForegroundColor Yellow
+        Write-Host "> Creating reverse lookup zone $zoneName" -ForegroundColor Yellow
+        # Create the reverse lookup zone
+        Add-DnsServerPrimaryZone -NetworkID $netID -ReplicationScope "Domain"
+        Write-Host "> Creating PTR record" -ForegroundColor Yellow
+        # Create the PTR record
+        $PtrDomainName = (Get-WmiObject win32_computersystem).DNSHostName + "." + (Get-WmiObject win32_computersystem).Domain;
+        Add-DnsServerResourceRecordPtr -ZoneName $zoneName -Name $env:computername -PtrDomainName $PtrDomainName
+        Write-Host "> Reverse lookup zone $zoneName created successfully." -ForegroundColor Green
+    }
+}
+catch {
+    Write-Host "> Error: Something went wrong while creating the reverse lookup zone." -ForegroundColor Red
+    Write-Error $_.Exception.Message
+}
+#endregion
+
+
+function Add-ReversLookupZone {
+    <#
+        .SYNOPSIS
+        Add the reverse lookup zone
+        .DESCRIPTION
+        Adds the reverse lookup zone for the subnet and makes sure the pointer record of the first domain controller appears in that zone
+        .EXAMPLE
+        Add-ReversLookupZone
+    #>
+    # Get the interface index of the network adapter that is connected to the network
+    $InterfaceIndex = (Get-NetAdapter | Where-Object { $_.Status -eq 'Up' -and $_.InterfaceDescription -notlike 'Microsoft*' -and $_.InterfaceAlias -notlike '*Virtual*' } | Select-Object -ExpandProperty InterfaceIndex); # Get the interface index of the network adapter that is connected to the network
+    # Create the reverse lookup zone for the subnet and make sure the pointer record of the first domain controller appears in that zone
+    $Ipconfig = Get-NetIPAddress | Where-Object { $_.InterfaceIndex -eq $InterfaceIndex -and $_.AddressFamily -eq 'IPv4' -and $_.InterfaceAlias -notlike '*Loopback*' }; # Get ipconfig of the first network adapter
+    
+    $Subnet = Out-NetworkIpAddress -IpAddress $Ipconfig.IpAddress -PrefixLength ($Ipconfig.PrefixLength); # Get the network part of the IP address
+   
+    Add-DnsServerPrimaryZone -NetworkID $Subnet -ReplicationScope "Domain" -DynamicUpdate "Secure";
+    Add-DnsServerResourceRecordPTR -Name $env:computername -PtrDomainName Get-ComputerFQDN -ZoneName ("0." + (Get-ReverseLookupZoneName -InterfaceIndex $InterfaceIndex));
+}
