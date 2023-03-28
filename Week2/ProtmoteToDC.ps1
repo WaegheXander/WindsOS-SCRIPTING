@@ -42,7 +42,7 @@ else {
 
 #
 # Install Forest if not already installed
-#Region
+#region
 Import-Module ADDSDeployment
 # Check if a domain controller is already installed
 if (Get-ADDomainController) {
@@ -101,6 +101,7 @@ function install-PrimaryDC {
             -ForestMode "WinThreshold" `
             -InstallDns:$True `
             -SafeModeAdministratorPassword (ConvertTo-SecureString (Read-Host "Password for PrimaryDC" -AsSecureString) -AsPlainText -Force) `
+            -NoRebootOnCompletion:$True `
             -Force:$True;
         Write-Host "> Forest $forestName created successfully." -ForegroundColor Green
     }
@@ -121,6 +122,7 @@ function install-BackupDC {
             -DomainName $DomainName `
             -DomainNetbiosName $DomainName `
             -SafeModeAdministratorPassword (ConvertTo-SecureString (Read-Host "Password for BackupDC" -AsSecureString) -AsPlainText -Force) `
+            -NoRebootOnCompletion:$True `
             -Force:$True;
         Write-Host "> Domain $DomainName created successfully." -ForegroundColor Green
     }
@@ -130,7 +132,6 @@ function install-BackupDC {
     }
 }
 #endregion
-
 
 #
 # Configure DNS
@@ -181,7 +182,9 @@ try {
         # Create the PTR record
         $PtrDomainName = (Get-WmiObject win32_computersystem).DNSHostName + "." + (Get-WmiObject win32_computersystem).Domain;
         Add-DnsServerResourceRecordPtr -ZoneName $zoneName -Name $env:computername -PtrDomainName $PtrDomainName
-        Write-Host "> Reverse lookup zone $zoneName created successfully." -ForegroundColor Green
+        Write-Host "> Reverse lookup zone $zoneName created successfully." -ForegroundColor Green   
+
+        Register-DnsClient
     }
 }
 catch {
@@ -190,23 +193,94 @@ catch {
 }
 #endregion
 
-
-function Add-ReversLookupZone {
-    <#
-        .SYNOPSIS
-        Add the reverse lookup zone
-        .DESCRIPTION
-        Adds the reverse lookup zone for the subnet and makes sure the pointer record of the first domain controller appears in that zone
-        .EXAMPLE
-        Add-ReversLookupZone
-    #>
-    # Get the interface index of the network adapter that is connected to the network
-    $InterfaceIndex = (Get-NetAdapter | Where-Object { $_.Status -eq 'Up' -and $_.InterfaceDescription -notlike 'Microsoft*' -and $_.InterfaceAlias -notlike '*Virtual*' } | Select-Object -ExpandProperty InterfaceIndex); # Get the interface index of the network adapter that is connected to the network
-    # Create the reverse lookup zone for the subnet and make sure the pointer record of the first domain controller appears in that zone
-    $Ipconfig = Get-NetIPAddress | Where-Object { $_.InterfaceIndex -eq $InterfaceIndex -and $_.AddressFamily -eq 'IPv4' -and $_.InterfaceAlias -notlike '*Loopback*' }; # Get ipconfig of the first network adapter
-    
-    $Subnet = Out-NetworkIpAddress -IpAddress $Ipconfig.IpAddress -PrefixLength ($Ipconfig.PrefixLength); # Get the network part of the IP address
-   
-    Add-DnsServerPrimaryZone -NetworkID $Subnet -ReplicationScope "Domain" -DynamicUpdate "Secure";
-    Add-DnsServerResourceRecordPTR -Name $env:computername -PtrDomainName Get-ComputerFQDN -ZoneName ("0." + (Get-ReverseLookupZoneName -InterfaceIndex $InterfaceIndex));
+#
+# rename the default-first-site-name
+#region
+try {
+    $siteName = (Get-ADSite -Identity "Default-First-Site-Name").Name
+    if ($siteName -ne $SiteName) {
+        Write-Host "> Renaming the default-first-site-name to $SiteName" -ForegroundColor Yellow
+        Rename-ADSite -Identity "Default-First-Site-Name" -NewName $SiteName
+        Write-Host "> Default-first-site-name renamed successfully." -ForegroundColor Green
+    }
 }
+catch {
+    Write-Host "> Error: Something went wrong while renaming the default-first-site-name." -ForegroundColor Red
+    Write-Error $_.Exception.Message
+}
+#endregion
+
+
+#
+# Configure DHCP
+#region
+if (Get-WindowsFeature -Name DHCP -erroraction SilentlyContinue) {
+    Write-Host "> DHCP server role already installed." -ForegroundColor Green
+} else {
+    try {
+        Write-Host "> DHCP not installed. Installing DHCP server role" -ForegroundColor Yellow
+        Install-WindowsFeature -Name DHCP -IncludeManagementTools
+        Write-Host "> DHCP server role installed." -ForegroundColor Green
+    }
+    catch {
+        Write-Host "> Error: Something went wrong while installing the DHCP server role." -ForegroundColor Red
+        Write-Error $_.Exception.Message
+    }
+    #check if dhcp server is authorized on the domain
+    if (Get-DhcpServerInDC -erroraction SilentlyContinue) {
+        Write-Host "> DHCP server is authorized on the domain." -ForegroundColor Green
+    } else {
+        try {
+            Write-Host "> DHCP server is not authorized on the domain. Authorizing DHCP server on the domain" -ForegroundColor Yellow
+            Add-DhcpServerInDC -DnsName (Get-WmiObject win32_computersystem).DNSHostName + "." + (Get-WmiObject win32_computersystem).Domain -IPAddress Get-NetIPAddress -AddressFamily IPv4 -InterfaceIndex $nic | Select-Object -ExpandProperty IPAddress
+            Write-Host "> DHCP server authorized on the domain." -ForegroundColor Green
+            Remove-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\ServerManager\Roles" -Name "PendingXmlIdentifier" -Force
+            Write-Host "> Removed PendingXmlIdentifier registry key." -ForegroundColor Green
+        }
+        catch {
+            Write-Host "> Error: Something went wrong while authorizing the DHCP server on the domain." -ForegroundColor Red
+            Write-Error $_.Exception.Message
+        }
+    }
+
+    #check if there is a scope configured
+    if (Get-DhcpServerv4Scope -erroraction SilentlyContinue) {
+        Write-Host "> DHCP scope already configured." -ForegroundColor Green
+    } else {
+        try {
+            Write-Host "> DHCP scope not configured. Configuring DHCP scope" -ForegroundColor Yellow
+            $ipAddress = Get-NetIPAddress -AddressFamily IPv4 -InterfaceIndex $nic | Select-Object -ExpandProperty IPAddress
+            $subnet = Get-NetIPAddress -AddressFamily IPv4 -InterfaceIndex $nic | Select-Object -ExpandProperty Prefix
+            $networkAddress = ($ipAddress.Split(".")[0..2] -join ".") + ".0"
+            $netID = "$networkAddress/$subnet"
+            $startRange = ($ipAddress.Split(".")[0..2] -join ".") + ".1"
+            $endRange = ($ipAddress.Split(".")[0..2] -join ".") + ".254"
+            #TODO check for subnet and clal the max range
+            Add-DhcpServerv4Scope -ComputerName $env:computername -Name "Main scope" -StartRange $startRange -EndRange $endRange -SubnetMask ConvertTo-SubnetMask-MaskBits $subnet
+        } catch {
+            Write-Host "> Error: Something went wrong while configuring the DHCP scope." -ForegroundColor Red
+            Write-Error $_.Exception.Message
+        }
+
+        try {
+            Set-DhcpServerv4OptionValue -OptionId 15 -Value (Get-WmiObject win32_computersystem).DNSHostName + "." + (Get-WmiObject win32_computersystem).Domain
+            Set-DhcpServerv4OptionValue -OptionId 6 -Value ($primDNS, $secDNS)
+            Set-DhcpServerv4OptionValue -OptionId 3 -Value (Get-NetRoute -InterfaceIndex 9| Select-Object -ExpandProperty NextHop)
+        }
+        catch {
+            Write-Host "> Error: Something went wrong while configuring the DHCP options." -ForegroundColor Red
+            Write-Error $_.Exception.Message
+        }
+    }   
+}
+
+function ConvertTo-SubnetMask{
+    param(
+      [Parameter(Mandatory = $true)]
+      [ValidateRange(0, 32)]
+      [Int] $MaskBits
+    )
+    $mask = ([Math]::Pow(2, $MaskBits) - 1) * [Math]::Pow(2, (32 - $MaskBits))
+    $bytes = [BitConverter]::GetBytes([UInt32] $mask)
+    return (($bytes.Count - 1)..0 | ForEach-Object { [String] $bytes[$_] }) -join "."
+  }

@@ -214,7 +214,9 @@ catch {
     Write-Error $_.Exception.Message
 }
 
-
+#
+# Setting the hostname
+#
 $ans = Read-Host "> Do you want to change the hostname? (y/n)"
 while ($True) {
     if ($ans.ToLower() -eq "y") {
