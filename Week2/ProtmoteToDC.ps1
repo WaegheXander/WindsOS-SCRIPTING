@@ -13,6 +13,85 @@ else {
 #endregion
 
 #
+# ask if it wants a remote connection
+#region
+$ans = Read-Host "Do you want to connect to a remote computer? (Y/N)"
+while ($true) {
+    if ($ans.ToLower() -eq "y") {
+        $computer = Read-Host "Enter the name of the remote computer"
+        while ($true) {
+            if ($computer -ne "") {
+                Write-Host "> Error: The computer name cannot be empty" -ForegroundColor Red
+                $computer = Read-Host "Enter the name of the remote computer"
+            }
+            else {
+                # test if the computer is reachable
+                try {
+                    Test-Connection -ComputerName $computer -Count 3 -Quiet
+                    Write-Host "> Computer $computer is reachable" -ForegroundColor Green
+                    Start-RemoteSession $computer
+                }
+                catch {
+                    Write-Host "> Error: Computer $computer is not reachable" -ForegroundColor Red
+                    $computer = Read-Host "Enter the name of the remote computer"
+                }
+            }
+        }
+        break
+    }
+}
+
+# start a remote session
+function Start-RemoteSession {
+    param (
+        $ComputerName
+    )
+
+    # check if a remote session is already open
+    if (Get-PSSession -ComputerName $ComputerName) {
+        Write-Host "> Error: A remote session is already open" -ForegroundColor Red
+        $ans = Read-Host "Do you want to close the remote session? (Y/N)"
+        while ($true) {
+            if ($ans.ToLower() -eq "y") {
+                # close the remote session
+                try {
+                    Remove-PSSession -ComputerName $ComputerName
+                    Write-Host "> Remote session closed successfully" -ForegroundColor Green
+                    break
+                }
+                catch {
+                    Write-Host "> Error: Something went wrong while closing the remote session" -ForegroundColor Red
+                    Write-Error $_.Exception.Message
+                    break
+                }
+            }
+            elseif ($ans.ToLower() -eq "n") {
+                break
+            }
+            else {
+                Write-Host "> Error: Invalid answer. Please enter Y or N" -ForegroundColor Red
+                $ans = Read-Host "Do you want to close the remote session? (Y/N)"
+            }
+        }
+    }
+    else {
+        # open a remote session
+        try {
+            $session = New-PSSession -ComputerName $ComputerName
+            Write-Host "> Remote session opened successfully" -ForegroundColor Green
+            Write-Host "> Connecting to remote session..." -ForegroundColor Yellow
+            Enter-PSSession -Session $session
+            Write-Host "> Connected to remote session" -ForegroundColor Green
+        }
+        catch {
+            Write-Host "> Error: Something went wrong while opening the remote session" -ForegroundColor Red
+            Write-Error $_.Exception.Message
+        }
+    }
+}
+
+
+#
 # get the nic
 #region
 try {
