@@ -18,6 +18,7 @@ else {
 $ans = Read-Host "Do you want to connect to a remote computer? (Y/N)"
 while ($true) {
     if ($ans.ToLower() -eq "y") {
+        Enable-PSRemoting -Force
         $computer = Read-Host "Enter the name of the remote computer"
         while ($true) {
             if ($computer -ne "") {
