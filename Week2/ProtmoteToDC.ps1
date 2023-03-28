@@ -216,7 +216,8 @@ catch {
 #region
 if (Get-WindowsFeature -Name DHCP -erroraction SilentlyContinue) {
     Write-Host "> DHCP server role already installed." -ForegroundColor Green
-} else {
+}
+else {
     try {
         Write-Host "> DHCP not installed. Installing DHCP server role" -ForegroundColor Yellow
         Install-WindowsFeature -Name DHCP -IncludeManagementTools
@@ -229,7 +230,8 @@ if (Get-WindowsFeature -Name DHCP -erroraction SilentlyContinue) {
     #check if dhcp server is authorized on the domain
     if (Get-DhcpServerInDC -erroraction SilentlyContinue) {
         Write-Host "> DHCP server is authorized on the domain." -ForegroundColor Green
-    } else {
+    }
+    else {
         try {
             Write-Host "> DHCP server is not authorized on the domain. Authorizing DHCP server on the domain" -ForegroundColor Yellow
             Add-DhcpServerInDC -DnsName (Get-WmiObject win32_computersystem).DNSHostName + "." + (Get-WmiObject win32_computersystem).Domain -IPAddress Get-NetIPAddress -AddressFamily IPv4 -InterfaceIndex $nic | Select-Object -ExpandProperty IPAddress
@@ -246,7 +248,8 @@ if (Get-WindowsFeature -Name DHCP -erroraction SilentlyContinue) {
     #check if there is a scope configured
     if (Get-DhcpServerv4Scope -erroraction SilentlyContinue) {
         Write-Host "> DHCP scope already configured." -ForegroundColor Green
-    } else {
+    }
+    else {
         try {
             Write-Host "> DHCP scope not configured. Configuring DHCP scope" -ForegroundColor Yellow
             $ipAddress = Get-NetIPAddress -AddressFamily IPv4 -InterfaceIndex $nic | Select-Object -ExpandProperty IPAddress
@@ -257,7 +260,8 @@ if (Get-WindowsFeature -Name DHCP -erroraction SilentlyContinue) {
             $endRange = ($ipAddress.Split(".")[0..2] -join ".") + ".254"
             #TODO check for subnet and clal the max range
             Add-DhcpServerv4Scope -ComputerName $env:computername -Name "Main scope" -StartRange $startRange -EndRange $endRange -SubnetMask ConvertTo-SubnetMask-MaskBits $subnet
-        } catch {
+        }
+        catch {
             Write-Host "> Error: Something went wrong while configuring the DHCP scope." -ForegroundColor Red
             Write-Error $_.Exception.Message
         }
@@ -265,7 +269,7 @@ if (Get-WindowsFeature -Name DHCP -erroraction SilentlyContinue) {
         try {
             Set-DhcpServerv4OptionValue -OptionId 15 -Value (Get-WmiObject win32_computersystem).DNSHostName + "." + (Get-WmiObject win32_computersystem).Domain
             Set-DhcpServerv4OptionValue -OptionId 6 -Value ($primDNS, $secDNS)
-            Set-DhcpServerv4OptionValue -OptionId 3 -Value (Get-NetRoute -InterfaceIndex 9| Select-Object -ExpandProperty NextHop)
+            Set-DhcpServerv4OptionValue -OptionId 3 -Value (Get-NetRoute -InterfaceIndex 9 | Select-Object -ExpandProperty NextHop)
         }
         catch {
             Write-Host "> Error: Something went wrong while configuring the DHCP options." -ForegroundColor Red
@@ -274,13 +278,13 @@ if (Get-WindowsFeature -Name DHCP -erroraction SilentlyContinue) {
     }   
 }
 
-function ConvertTo-SubnetMask{
+function ConvertTo-SubnetMask {
     param(
-      [Parameter(Mandatory = $true)]
-      [ValidateRange(0, 32)]
-      [Int] $MaskBits
+        [Parameter(Mandatory = $true)]
+        [ValidateRange(0, 32)]
+        [Int] $MaskBits
     )
     $mask = ([Math]::Pow(2, $MaskBits) - 1) * [Math]::Pow(2, (32 - $MaskBits))
     $bytes = [BitConverter]::GetBytes([UInt32] $mask)
     return (($bytes.Count - 1)..0 | ForEach-Object { [String] $bytes[$_] }) -join "."
-  }
+}

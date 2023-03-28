@@ -2,7 +2,7 @@ $IPType = "IPv4"
 
 #
 # Check if the input is a valid IP address
-#
+#region
 function checkValidIP {
     param (
         $ip
@@ -16,10 +16,11 @@ function checkValidIP {
         return $false
     }
 }
+#endregion
 
 #
 # Setting Static IP address
-#
+#region
 $ip = Read-Host "Enter a valid IP address"
 while (!(checkValidIP $ip)) {
     Write-Host "> Error: Invalid IP address" -ForegroundColor Red
@@ -106,10 +107,11 @@ catch {
     Write-Host "> Error: Something went wrong with setting the DNS servers" -ForegroundColor Red
     Write-Error $_.Exception.Message
 }
+#endregion
 
 #
 # Setting correct timezone
-#
+#region
 $timezone = "Central European Standard Time"
 Write-Host "> Setting correct timezone"
 # check if the timezone is correct
@@ -122,10 +124,11 @@ else {
     Set-TimeZone -TimeZone $timezone
     Write-Host "> Timezone set to Central European Standard Time" -ForegroundColor Green
 }
+#endregion
 
 #
 # Enable/Disable remote desktop
-#
+#region
 $ans = Read-Host "Do you want to enable remote desktop? (y/n)"
 while ($True) {
     if ($ans.ToLower() -eq "y") {
@@ -163,10 +166,11 @@ while ($True) {
         $ans = Read-Host "Do you want to enable remote desktop? (y/n)"
     }
 }
+#endregion
 
 #
 # Disable IE Enhanced Security
-#
+#region
 try {
     Write-Host "> Disabling IE Enhanced Security"
     $AdminKey = "HKLM:\SOFTWARE\Microsoft\Active Setup\Installed Components\{A509B1A7-37EF-4b3f-8CFC-4F3A74704073}"
@@ -179,10 +183,11 @@ catch {
     Write-Host "> Error: Something went wrong with disabling IE Enhanced Security" -ForegroundColor Red
     Write-Error $_.Exception.Message
 }
+#endregion
 
 #
 # Setting Control Panel view to small icons
-#
+#region
 try {
     Write-Output "> Setting Control Panel view to small icons"
     # check if the key exists if not create it
@@ -200,11 +205,11 @@ catch {
     Write-Host "> Error: Something went wrong with setting Control Panel view to small icons" -ForegroundColor Red
     Write-Error $_.Exception.Message
 }
-
+#endregion
 
 #
 # enable the file extension to be shown
-#
+#region
 try {
     Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "HideFileExt" -Value 1
     Write-Host "File extension shown successfully" -ForegroundColor Green
@@ -213,10 +218,50 @@ catch {
     Write-Host "> Error: Something went wrong with enabling the file extension to be shown" -ForegroundColor Red
     Write-Error $_.Exception.Message
 }
+#endregion
+
+#
+# add server to domain
+#region
+$ans = Read-Host "> Do you want to add this server to a domain? (y/n)"
+while ($True) {
+    if ($ans.ToLower() -eq "y") {
+        $ans = Read-Host "> What is the domain name? (example: domain.local)"
+        # check if domain name exist
+        if (Test-Connection -ComputerName $ans -Count 1 -Quiet) {
+            $domain = $ans
+        }
+        else {
+            Write-Host "> Error: Domain name does not exist" -ForegroundColor Red
+            $ans = Read-Host "> What is the domain name? (example: domain.local)"
+            break
+        }
+        
+        try {
+            Write-Host "> Adding server to domain"
+            Add-Computer -DomainName $domain -Credential Get-Credential
+            Write-Host "> Server added to domain successfully" -ForegroundColor Green
+            break
+        }
+        catch {
+            Write-Host "> Error: Something went wrong with adding the server to the domain" -ForegroundColor Red
+            Write-Error $_.Exception.Message
+        }
+    }
+    elseif ($ans.ToLower() -eq "n") {
+        Write-Host "> Server not added to domain" -ForegroundColor Green
+        break
+    }
+    else {
+        Write-Host "> Error: Invalid input" -ForegroundColor Red
+        $ans = Read-Host "> Do you want to add this server to a domain? (y/n)"
+    }
+}
+#endregion 
 
 #
 # Setting the hostname
-#
+#region
 $ans = Read-Host "> Do you want to change the hostname? (y/n)"
 while ($True) {
     if ($ans.ToLower() -eq "y") {
@@ -243,6 +288,7 @@ while ($True) {
     }
 }
 Write-Host "> Hostname set to $env:computername" -ForegroundColor Green
+#endregion
 
 Write-Host ">" -ForegroundColor Green
 Write-Host "> Alle Setting Set" -ForegroundColor Green
