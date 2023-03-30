@@ -41,8 +41,11 @@ while ($true) {
         break
     }
 }
+#endregion
 
+#
 # start a remote session
+#region
 function Start-RemoteSession {
     param (
         $ComputerName
@@ -90,6 +93,7 @@ function Start-RemoteSession {
         }
     }
 }
+#endregion
 
 
 #
@@ -124,36 +128,30 @@ else {
 # Install Forest if not already installed
 #region
 Import-Module ADDSDeployment
-# Check if a domain controller is already installed
-if (Get-ADDomainController) {
-    # A forest is already installed
+# Check if it is an Primary or a Backup Domain Controller
+if ((Get-WmiObject -Class Win32_ComputerSystem).DomainRole -eq 5) {
+    # Primary Domain Controller
     Write-Host "> Warining: A forest is already installed." -ForegroundColor Yellow
-    #get the forest name
-    $forestName = (Get-WmiObject Win32_ComputerSystem).Domain
-    Write-Host "> Forest name: $forestName" -ForegroundColor Green
-
-    # Check if it is an Primary or a Backup Domain Controller
-    if ((Get-WmiObject -Class Win32_ComputerSystem).DomainRole -eq 5) {
-        # Primary Domain Controller
-        Write-Host "> Primary Domain Controller" -ForegroundColor Green
-    }
-    elseif ((Get-WmiObject -Class Win32_ComputerSystem).DomainRole -eq 4) {
-        # Backup Domain Controller
-        Write-Host "> Backup Domain Controller" -ForegroundColor Green
-    }
-
+    Write-Host "> Primary Domain Controller" -ForegroundColor Green
+}
+elseif ((Get-WmiObject -Class Win32_ComputerSystem).DomainRole -eq 4) {
+    # Backup Domain Controller
+    Write-Host "> Warining: A forest is already installed." -ForegroundColor Yellow
+    Write-Host "> Backup Domain Controller" -ForegroundColor Green
 }
 else {
     $ans = Read-Host "Do you want to create a Primary or a Backup Domain Controller? (P/B)"
-    while ($ans.ToLower() -ne "p" -or $ans.ToLower() -ne "b") {
+    while ($true) {
+        if ($ans.ToLower() -eq "p") {
+            install-PrimaryDC
+            break
+        }
+        elseif ($ans.ToLower() -eq "b") {
+            install-BackupDC
+            break
+        }
         Write-Host "> Error: Invalid answer. Please enter P or B" -ForegroundColor Red
         $ans = Read-Host "Do you want to create a Primary or a Backup Domain Controller? (P/B)"
-    }
-    if ($ans.ToLower() -eq "p") {
-        install-PrimaryDC
-    }
-    elseif ($ans.ToLower() -eq "b") {
-        install-BackupDC
     }
 }
 
