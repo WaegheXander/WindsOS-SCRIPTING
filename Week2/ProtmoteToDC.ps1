@@ -39,6 +39,11 @@ while ($true) {
             }
         }
         break
+    } elseif ($ans.ToLower() -eq "n") {
+        break
+    } else {
+        Write-Host "> Error: Invalid answer. Please enter Y or N" -ForegroundColor Red
+        $ans = Read-Host "Do you want to connect to a remote computer? (Y/N)"
     }
 }
 #endregion
