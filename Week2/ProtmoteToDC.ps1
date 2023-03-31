@@ -133,40 +133,13 @@ else {
 # Install Forest if not already installed
 #region
 Import-Module ADDSDeployment
-# Check if it is an Primary or a Backup Domain Controller
-if ((Get-WmiObject -Class Win32_ComputerSystem).DomainRole -eq 5) {
-    # Primary Domain Controller
-    Write-Host "> Warining: A forest is already installed." -ForegroundColor Yellow
-    Write-Host "> Primary Domain Controller" -ForegroundColor Green
-}
-elseif ((Get-WmiObject -Class Win32_ComputerSystem).DomainRole -eq 4) {
-    # Backup Domain Controller
-    Write-Host "> Warining: A forest is already installed." -ForegroundColor Yellow
-    Write-Host "> Backup Domain Controller" -ForegroundColor Green
-}
-else {
-    $ans = Read-Host "Do you want to create a Primary or a Backup Domain Controller? (P/B)"
-    while ($true) {
-        if ($ans.ToLower() -eq "p") {
-            install-PrimaryDC
-            break
-        }
-        elseif ($ans.ToLower() -eq "b") {
-            install-BackupDC
-            break
-        }
-        Write-Host "> Error: Invalid answer. Please enter P or B" -ForegroundColor Red
-        $ans = Read-Host "Do you want to create a Primary or a Backup Domain Controller? (P/B)"
-    }
-}
-
 # install a Primary Domain Controller 
 function install-PrimaryDC {
     $NetBiosName = Read-Host "Enter the name of the NetBiosName (ex. INTRANET)"
     $NetBiosName = $NetBiosName.ToUpper()
 
     $DomainName = Read-Host "Enter the name of the new forest ($NetBiosName.???)"
-    $forestName = $NetBiosName.$DomainName
+    $forestName = "$NetBiosName.$DomainName"
     Write-Host "> Creating new forest $forestName..." -ForegroundColor Yellow
     try {
         Install-ADDSForest `
@@ -204,6 +177,33 @@ function install-BackupDC {
     catch {
         Write-Host "> Error: Something went wrong while creating the domain." -ForegroundColor Red
         Write-Error $_.Exception.Message
+    }
+}
+
+# Check if it is an Primary or a Backup Domain Controller
+if ((Get-WmiObject -Class Win32_ComputerSystem).DomainRole -eq 5) {
+    # Primary Domain Controller
+    Write-Host "> Warining: A forest is already installed." -ForegroundColor Yellow
+    Write-Host "> Primary Domain Controller" -ForegroundColor Green
+}
+elseif ((Get-WmiObject -Class Win32_ComputerSystem).DomainRole -eq 4) {
+    # Backup Domain Controller
+    Write-Host "> Warining: A forest is already installed." -ForegroundColor Yellow
+    Write-Host "> Backup Domain Controller" -ForegroundColor Green
+}
+else {
+    $ans = Read-Host "Do you want to create a Primary or a Backup Domain Controller? (P/B)"
+    while ($true) {
+        if ($ans.ToLower() -eq "p") {
+            install-PrimaryDC
+            break
+        }
+        elseif ($ans.ToLower() -eq "b") {
+            install-BackupDC
+            break
+        }
+        Write-Host "> Error: Invalid answer. Please enter P or B" -ForegroundColor Red
+        $ans = Read-Host "Do you want to create a Primary or a Backup Domain Controller? (P/B)"
     }
 }
 #endregion
