@@ -162,10 +162,10 @@ else {
 
 # install a Primary Domain Controller 
 function install-PrimaryDC {
-    $NetBiosName | Read-Host "Enter the name of the NetBiosName (ex. INTRANET)"
+    $NetBiosName = Read-Host "Enter the name of the NetBiosName (ex. INTRANET)"
     $NetBiosName = $NetBiosName.ToUpper()
 
-    $DomainName | Read-Host "Enter the name of the new forest ($NetBiosName.???)"
+    $DomainName = Read-Host "Enter the name of the new forest ($NetBiosName.???)"
     $forestName = $NetBiosName.$DomainName
     Write-Host "> Creating new forest $forestName..." -ForegroundColor Yellow
     try {
