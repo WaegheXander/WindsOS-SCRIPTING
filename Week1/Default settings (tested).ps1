@@ -211,7 +211,7 @@ catch {
 # enable the file extension to be shown
 #region
 try {
-    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "HideFileExt" -Value 1
+    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "HideFileExt" -Value 0
     Write-Host "File extension shown successfully" -ForegroundColor Green
 }
 catch {
