@@ -371,7 +371,7 @@ else {
 #check if there is a scope configured
 #region
 try {
-    if (Get-DhcpServerv4Scope -All) {
+    if (Get-DhcpServerv4Scope) {
         Write-Host "> DHCP scope already configured." -ForegroundColor Green
     }
     else {
@@ -415,7 +415,7 @@ try {
         Write-Host "> DHCP option 3 already configured." -ForegroundColor Green
     }
     else {
-        Add-DhcpServerv4OptionValue -OptionId 3 -Value ((Get-NetRoute -InterfaceIndex $nic).NextHop -split '0.0.0.0') -Force
+        Set-DhcpServerv4OptionValue -OptionId 3 -Value ((Get-NetRoute -InterfaceIndex $nic).NextHop -split '0.0.0.0') -Force
         Write-Host "> DHCP option 3 configured." -ForegroundColor Green
     }
     Write-Host "> DHCP options configured." -ForegroundColor Green
