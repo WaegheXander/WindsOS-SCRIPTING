@@ -273,38 +273,37 @@ catch {
 #
 # rename the default-first-site-name
 #region
-try {
-    $siteName = Read-Host "Enter the name of the site"
-    while ($true) {
-        if ($siteName -eq "") {
-            Write-Host "> Error: Site name cannot be empty." -ForegroundColor Red
-        }
-        else {
-            if ((Get-ADObject -SearchBase (Get-ADRootDSE).ConfigurationNamingContext -Filter 'objectclass -like "site"').name -eq $siteName) {
-                Write-Host "> Error: Site name already exists." -ForegroundColor Red
-                continue
+Write-Host "> Renaming the default-first-site-name" -ForegroundColor Yellow
+$current = (Get-ADObject -SearchBase (Get-ADRootDSE).ConfigurationNamingContext -Filter 'objectclass -like "site"').name
+Write-Host "> The current name of the default-first-site-name is $current" -ForegroundColor Yellow
+$ans = Read-Host "Do you want to rename the default-first-site-name? (Y/N)"
+while ($true) {
+    if ($ans.ToLower() -eq "y") {
+        $siteName = Read-Host "Enter the name of the site"
+        while ($true) {
+            if ($siteName -eq "") {
+                Write-Host "> Error: Site name cannot be empty." -ForegroundColor Red
             }
             else {
-                break
+                if (((Get-ADObject -SearchBase (Get-ADRootDSE).ConfigurationNamingContext -Filter 'objectclass -like "site"').name).ToUpper() -eq $siteName.ToUpper()) {
+                    Write-Host "> Error: Site name already exists." -ForegroundColor Red
+                    continue
+                }
+                else {
+                    break
+                }
             }
+            $siteName = Read-Host "Enter the name of the site"
         }
-        $siteName = Read-Host "Enter the name of the site"
+
+        Get-ADObject -SearchBase (Get-ADRootDSE).ConfigurationNamingContext -Filter 'objectclass -like "site"' | Rename-ADObject -NewName $SiteName;
+        break
     }
-
-    Get-ADObject -SearchBase (Get-ADRootDSE).ConfigurationNamingContext -Filter 'objectclass -like "site"' | Rename-ADObject -NewName $SiteName;
-    
-    $adapter = Get-NetIPAddress -AddressFamily IPv4 -InterfaceIndex $nic
-    $ipAddress = $adapter | Get-NetIPAddress -AddressFamily IPv4 | Select-Object -ExpandProperty IPAddress
-    $subnet = $adapter | Get-NetIPAddress -AddressFamily IPv4 | Select-Object -ExpandProperty PrefixLength
-    $networkAddress = ($ipAddress.Split(".")[0..2] -join ".") + ".0"
-    $netID = "$networkAddress/$subnet"
-
-    New-ADReplicationSubnet -Site $SiteName -Name $netID;
-    Write-Host "> Renamed the default-first-site-name to $siteName" -ForegroundColor Green
-}
-catch {
-    Write-Host "> Error: Something went wrong while renaming the default-first-site-name." -ForegroundColor Red
-    Write-Error $_.Exception.Message
+    elseif ($ans.ToLower() -eq "n") {
+        break
+    }
+    Write-Host "> Error: Invalid answer. Please enter Y or N" -ForegroundColor Red
+    $ans = Read-Host "Do you want to rename the default-first-site-name? (Y/N)"
 }
 #endregion
 
