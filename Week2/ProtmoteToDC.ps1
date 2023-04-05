@@ -252,7 +252,7 @@ try {
         Write-Output "> Warning: Reverse lookup zone does not exist." -ForegroundColor Yellow
         Write-Host "> Creating reverse lookup zone $zoneName" -ForegroundColor Yellow
         # Create the reverse lookup zone
-        Add-DnsServerPrimaryZone -NetworkID $netID -ReplicationScope "Domain"
+        Add-DnsServerPrimaryZone -NetworkID $netID -ReplicationScope "Forest"
         Write-Host "> Creating PTR record" -ForegroundColor Yellow
         # Create the PTR record
         $PtrDomainName = (Get-WmiObject win32_computersystem).DNSHostName + "." + (Get-WmiObject win32_computersystem).Domain;
@@ -272,12 +272,18 @@ catch {
 # rename the default-first-site-name
 #region
 try {
-    $siteName = (Get-ADSite -Identity "Default-First-Site-Name").Name
-    if ($siteName -ne $SiteName) {
-        Write-Host "> Renaming the default-first-site-name to $SiteName" -ForegroundColor Yellow
-        Rename-ADSite -Identity "Default-First-Site-Name" -NewName $SiteName
-        Write-Host "> Default-first-site-name renamed successfully." -ForegroundColor Green
+    $siteName = Read-Host "Enter the name of the site"
+    while ($true) {
+        $siteName = Read-Host "Enter the name of the site"
+        if ($siteName -ne "") {
+            Write-Host "> Error: Site name cannot be empty." -ForegroundColor Red
+        }
+        else {
+            break
+        }
     }
+    Get-ADObject -SearchBase (Get-ADRootDSE).ConfigurationNamingContext -Filter 'objectclass -like "site"' | Rename-ADObject -NewName $SiteName;
+    New-ADReplicationSubnet -Site $SiteName -Name (Get-Subnet -InterfaceIndex $nic);
 }
 catch {
     Write-Host "> Error: Something went wrong while renaming the default-first-site-name." -ForegroundColor Red
