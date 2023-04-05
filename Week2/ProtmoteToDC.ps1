@@ -371,16 +371,22 @@ else {
 #check if there is a scope configured
 #region
 try {
-    Write-Host "> DHCP scope not configured. Configuring DHCP scope" -ForegroundColor Yellow
-    $ipAddress = Get-NetIPAddress -AddressFamily IPv4 -InterfaceIndex $nic | Select-Object -ExpandProperty IPAddress
-    $subnet = Get-NetIPAddress -AddressFamily IPv4 -InterfaceIndex $nic | Select-Object -ExpandProperty PrefixLength
-    $subnetmask = ConvertTo-SubnetMask $subnet
-    $networkAddress = ($ipAddress.Split(".")[0..2] -join ".") + ".0"
-    $netID = "$networkAddress/$subnet"
-    $startRange = ($ipAddress.Split(".")[0..2] -join ".") + ".1"
-    $endRange = ($ipAddress.Split(".")[0..2] -join ".") + ".254"
-    #TODO check for subnet and clal the max range
-    Add-DhcpServerv4Scope -ComputerName $env:computername -Name "Main scope" -StartRange $startRange -EndRange $endRange -SubnetMask $subnetmask -State Active -Confirm:$false
+    if (Get-DhcpServerv4Scope -All) {
+        Write-Host "> DHCP scope already configured." -ForegroundColor Green
+    }
+    else {
+        Write-Host "> DHCP scope not configured. Configuring DHCP scope" -ForegroundColor Yellow
+        $ipAddress = Get-NetIPAddress -AddressFamily IPv4 -InterfaceIndex $nic | Select-Object -ExpandProperty IPAddress
+        $subnet = Get-NetIPAddress -AddressFamily IPv4 -InterfaceIndex $nic | Select-Object -ExpandProperty PrefixLength
+        $subnetmask = ConvertTo-SubnetMask $subnet
+        $networkAddress = ($ipAddress.Split(".")[0..2] -join ".") + ".0"
+        $netID = "$networkAddress/$subnet"
+        $startRange = ($ipAddress.Split(".")[0..2] -join ".") + ".1"
+        $endRange = ($ipAddress.Split(".")[0..2] -join ".") + ".254"
+        #TODO check for subnet and clal the max range
+        Add-DhcpServerv4Scope -ComputerName $env:computername -Name "Main scope" -StartRange $startRange -EndRange $endRange -SubnetMask $subnetmask -State Active -Confirm:$false
+        Write-Host "> DHCP scope configured." -ForegroundColor Green
+    }
 }
 catch {
     Write-Host "> Error: Something went wrong while configuring the DHCP scope." -ForegroundColor Red
@@ -388,9 +394,31 @@ catch {
 }
 
 try {
-    Set-DhcpServerv4OptionValue -OptionId 15 -Value (Get-WmiObject win32_computersystem).DNSHostName + "." + (Get-WmiObject win32_computersystem).Domain
-    Set-DhcpServerv4OptionValue -OptionId 6 -Value ($primDNS, $secDNS)
-    Set-DhcpServerv4OptionValue -OptionId 3 -Value (Get-NetRoute -InterfaceIndex 9 | Select-Object -ExpandProperty NextHop)
+    Write-Host "> Configuring DHCP options" -ForegroundColor Yellow
+    if (Get-DhcpServerv4OptionValue -OptionId 15) {
+        Write-Host "> DHCP option 15 already configured." -ForegroundColor Green
+    }
+    else {
+        Set-DhcpServerv4OptionValue -OptionId 15 -Value (Get-WmiObject win32_computersystem).DNSHostName + "." + (Get-WmiObject win32_computersystem).Domain
+        Write-Host "> DHCP option 15 configured." -ForegroundColor Green
+    }
+
+    if (Get-DhcpServerv4OptionValue -OptionId 6) {
+        Write-Host "> DHCP option 6 already configured." -ForegroundColor Green
+    }
+    else {
+        Set-DhcpServerv4OptionValue -OptionId 6 -Value ($primDNS, $secDNS)
+        Write-Host "> DHCP option 6 configured." -ForegroundColor Green
+    }
+
+    if (Get-DhcpServerv4OptionValue -OptionId 3) {
+        Write-Host "> DHCP option 3 already configured." -ForegroundColor Green
+    }
+    else {
+        Set-DhcpServerv4OptionValue -OptionId 3 -Value (Get-NetRoute -InterfaceIndex $nic | Select-Object -ExpandProperty NextHop)
+        Write-Host "> DHCP option 3 configured." -ForegroundColor Green
+    }
+    Write-Host "> DHCP options configured." -ForegroundColor Green
 }
 catch {
     Write-Host "> Error: Something went wrong while configuring the DHCP options." -ForegroundColor Red
