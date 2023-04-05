@@ -349,7 +349,7 @@ else {
 try {
     Write-Host "> DHCP scope not configured. Configuring DHCP scope" -ForegroundColor Yellow
     $ipAddress = Get-NetIPAddress -AddressFamily IPv4 -InterfaceIndex $nic | Select-Object -ExpandProperty IPAddress
-    $subnet = Get-NetIPAddress -AddressFamily IPv4 -InterfaceIndex $nic | Select-Object -ExpandProperty Prefix
+    $subnet = Get-NetIPAddress -AddressFamily IPv4 -InterfaceIndex $nic | Select-Object -ExpandProperty PrefixLength
     $networkAddress = ($ipAddress.Split(".")[0..2] -join ".") + ".0"
     $netID = "$networkAddress/$subnet"
     $startRange = ($ipAddress.Split(".")[0..2] -join ".") + ".1"
