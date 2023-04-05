@@ -1,4 +1,23 @@
 #
+# Check if the input is a valid IP address
+#region
+function checkValidIP {
+    param (
+        $ip
+    )
+    
+    $ipRegex = "^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
+    if ($ip -match $ipRegex) {
+        return $true
+    }
+    else {
+        return $false
+    }
+}
+#endregion
+
+
+#
 # Check if the script is running as administrator
 #region 
 Write-Host "> Checking permissions"
@@ -219,7 +238,7 @@ try {
         Write-Host "> Configuring DNS servers..." -ForegroundColor Yellow
         $primDNS = Get-NetIPAddress -AddressFamily IPv4 -InterfaceIndex $nic | Select-Object -ExpandProperty IPAddress
         $secDNS = Read-Host "Enter the secondary DNS server"
-        while (!($secDNS -as [IPAddress])) {
+        while (!(checkValidIP($secDNS))) {
             Write-Host "> Error: Invalid IP address" -ForegroundColor Red
             $secDNS = Read-Host "Enter the secondary DNS server"
         }
@@ -325,8 +344,11 @@ else {
         Write-Error $_.Exception.Message
     }
 }
+#endregion
 
+#
 #check if dhcp server is authorized on the domain
+#region
 if (Get-DhcpServerInDC -erroraction SilentlyContinue) {
     Write-Host "> DHCP server is authorized on the domain." -ForegroundColor Green
 }
@@ -343,18 +365,22 @@ else {
         Write-Error $_.Exception.Message
     }
 }
+#endregion
 
+#
 #check if there is a scope configured
+#region
 try {
     Write-Host "> DHCP scope not configured. Configuring DHCP scope" -ForegroundColor Yellow
     $ipAddress = Get-NetIPAddress -AddressFamily IPv4 -InterfaceIndex $nic | Select-Object -ExpandProperty IPAddress
     $subnet = Get-NetIPAddress -AddressFamily IPv4 -InterfaceIndex $nic | Select-Object -ExpandProperty PrefixLength
+    $subnetmask = ConvertTo-SubnetMask $subnet
     $networkAddress = ($ipAddress.Split(".")[0..2] -join ".") + ".0"
     $netID = "$networkAddress/$subnet"
     $startRange = ($ipAddress.Split(".")[0..2] -join ".") + ".1"
     $endRange = ($ipAddress.Split(".")[0..2] -join ".") + ".254"
     #TODO check for subnet and clal the max range
-    Add-DhcpServerv4Scope -ComputerName $env:computername -Name "Main scope" -StartRange $startRange -EndRange $endRange -SubnetMask ConvertTo-SubnetMask-MaskBits $subnet
+    Add-DhcpServerv4Scope -ComputerName $env:computername -Name "Main scope" -StartRange $startRange -EndRange $endRange -SubnetMask $subnetmask -State Active -Confirm:$false
 }
 catch {
     Write-Host "> Error: Something went wrong while configuring the DHCP scope." -ForegroundColor Red
@@ -370,6 +396,7 @@ catch {
     Write-Host "> Error: Something went wrong while configuring the DHCP options." -ForegroundColor Red
     Write-Error $_.Exception.Message
 }
+#endregion
 
 function ConvertTo-SubnetMask {
     param(
