@@ -276,11 +276,16 @@ catch {
 try {
     $siteName = Read-Host "Enter the name of the site"
     while ($true) {
-        if ($siteName -ne "") {
+        if ($siteName -eq "") {
             Write-Host "> Error: Site name cannot be empty." -ForegroundColor Red
         }
         else {
-            break
+            if ((Get-ADObject -SearchBase (Get-ADRootDSE).ConfigurationNamingContext -Filter 'objectclass -like "site"').name -eq $siteName) {
+                Write-Host "> Error: Site name already exists." -ForegroundColor Red
+                continue
+            } else {
+                break
+            }
         }
         $siteName = Read-Host "Enter the name of the site"
     }
