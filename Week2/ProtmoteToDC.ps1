@@ -274,16 +274,25 @@ catch {
 try {
     $siteName = Read-Host "Enter the name of the site"
     while ($true) {
-        $siteName = Read-Host "Enter the name of the site"
         if ($siteName -ne "") {
             Write-Host "> Error: Site name cannot be empty." -ForegroundColor Red
         }
         else {
             break
         }
+        $siteName = Read-Host "Enter the name of the site"
     }
+
     Get-ADObject -SearchBase (Get-ADRootDSE).ConfigurationNamingContext -Filter 'objectclass -like "site"' | Rename-ADObject -NewName $SiteName;
-    New-ADReplicationSubnet -Site $SiteName -Name (Get-Subnet -InterfaceIndex $nic);
+    
+    $adapter = Get-NetIPAddress -AddressFamily IPv4 -InterfaceIndex $nic
+    $ipAddress = $adapter | Get-NetIPAddress -AddressFamily IPv4 | Select-Object -ExpandProperty IPAddress
+    $subnet = $adapter | Get-NetIPAddress -AddressFamily IPv4 | Select-Object -ExpandProperty PrefixLength
+    $networkAddress = ($ipAddress.Split(".")[0..2] -join ".") + ".0"
+    $netID = "$networkAddress/$subnet"
+
+    New-ADReplicationSubnet -Site $SiteName -Name $netID;
+    Write-Host "> Renamed the default-first-site-name to $siteName" -ForegroundColor Green
 }
 catch {
     Write-Host "> Error: Something went wrong while renaming the default-first-site-name." -ForegroundColor Red
