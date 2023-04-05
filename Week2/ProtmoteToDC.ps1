@@ -39,9 +39,11 @@ while ($true) {
             }
         }
         break
-    } elseif ($ans.ToLower() -eq "n") {
+    }
+    elseif ($ans.ToLower() -eq "n") {
         break
-    } else {
+    }
+    else {
         Write-Host "> Error: Invalid answer. Please enter Y or N" -ForegroundColor Red
         $ans = Read-Host "Do you want to connect to a remote computer? (Y/N)"
     }
@@ -317,56 +319,56 @@ else {
         Write-Host "> Error: Something went wrong while installing the DHCP server role." -ForegroundColor Red
         Write-Error $_.Exception.Message
     }
-    #check if dhcp server is authorized on the domain
-    if (Get-DhcpServerInDC -erroraction SilentlyContinue) {
-        Write-Host "> DHCP server is authorized on the domain." -ForegroundColor Green
-    }
-    else {
-        try {
-            Write-Host "> DHCP server is not authorized on the domain. Authorizing DHCP server on the domain" -ForegroundColor Yellow
-            Add-DhcpServerInDC -DnsName (Get-WmiObject win32_computersystem).DNSHostName + "." + (Get-WmiObject win32_computersystem).Domain -IPAddress Get-NetIPAddress -AddressFamily IPv4 -InterfaceIndex $nic | Select-Object -ExpandProperty IPAddress
-            Write-Host "> DHCP server authorized on the domain." -ForegroundColor Green
-            Remove-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\ServerManager\Roles" -Name "PendingXmlIdentifier" -Force
-            Write-Host "> Removed PendingXmlIdentifier registry key." -ForegroundColor Green
-        }
-        catch {
-            Write-Host "> Error: Something went wrong while authorizing the DHCP server on the domain." -ForegroundColor Red
-            Write-Error $_.Exception.Message
-        }
-    }
-
-    #check if there is a scope configured
-    if (Get-DhcpServerv4Scope -erroraction SilentlyContinue) {
-        Write-Host "> DHCP scope already configured." -ForegroundColor Green
-    }
-    else {
-        try {
-            Write-Host "> DHCP scope not configured. Configuring DHCP scope" -ForegroundColor Yellow
-            $ipAddress = Get-NetIPAddress -AddressFamily IPv4 -InterfaceIndex $nic | Select-Object -ExpandProperty IPAddress
-            $subnet = Get-NetIPAddress -AddressFamily IPv4 -InterfaceIndex $nic | Select-Object -ExpandProperty Prefix
-            $networkAddress = ($ipAddress.Split(".")[0..2] -join ".") + ".0"
-            $netID = "$networkAddress/$subnet"
-            $startRange = ($ipAddress.Split(".")[0..2] -join ".") + ".1"
-            $endRange = ($ipAddress.Split(".")[0..2] -join ".") + ".254"
-            #TODO check for subnet and clal the max range
-            Add-DhcpServerv4Scope -ComputerName $env:computername -Name "Main scope" -StartRange $startRange -EndRange $endRange -SubnetMask ConvertTo-SubnetMask-MaskBits $subnet
-        }
-        catch {
-            Write-Host "> Error: Something went wrong while configuring the DHCP scope." -ForegroundColor Red
-            Write-Error $_.Exception.Message
-        }
-
-        try {
-            Set-DhcpServerv4OptionValue -OptionId 15 -Value (Get-WmiObject win32_computersystem).DNSHostName + "." + (Get-WmiObject win32_computersystem).Domain
-            Set-DhcpServerv4OptionValue -OptionId 6 -Value ($primDNS, $secDNS)
-            Set-DhcpServerv4OptionValue -OptionId 3 -Value (Get-NetRoute -InterfaceIndex 9 | Select-Object -ExpandProperty NextHop)
-        }
-        catch {
-            Write-Host "> Error: Something went wrong while configuring the DHCP options." -ForegroundColor Red
-            Write-Error $_.Exception.Message
-        }
-    }   
 }
+#check if dhcp server is authorized on the domain
+if (Get-DhcpServerInDC -erroraction SilentlyContinue) {
+    Write-Host "> DHCP server is authorized on the domain." -ForegroundColor Green
+}
+else {
+    try {
+        Write-Host "> DHCP server is not authorized on the domain. Authorizing DHCP server on the domain" -ForegroundColor Yellow
+        Add-DhcpServerInDC -DnsName (Get-WmiObject win32_computersystem).DNSHostName + "." + (Get-WmiObject win32_computersystem).Domain -IPAddress Get-NetIPAddress -AddressFamily IPv4 -InterfaceIndex $nic | Select-Object -ExpandProperty IPAddress
+        Write-Host "> DHCP server authorized on the domain." -ForegroundColor Green
+        Remove-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\ServerManager\Roles" -Name "PendingXmlIdentifier" -Force
+        Write-Host "> Removed PendingXmlIdentifier registry key." -ForegroundColor Green
+    }
+    catch {
+        Write-Host "> Error: Something went wrong while authorizing the DHCP server on the domain." -ForegroundColor Red
+        Write-Error $_.Exception.Message
+    }
+}
+
+#check if there is a scope configured
+if (Get-DhcpServerv4Scope -erroraction SilentlyContinue) {
+    Write-Host "> DHCP scope already configured." -ForegroundColor Green
+}
+else {
+    try {
+        Write-Host "> DHCP scope not configured. Configuring DHCP scope" -ForegroundColor Yellow
+        $ipAddress = Get-NetIPAddress -AddressFamily IPv4 -InterfaceIndex $nic | Select-Object -ExpandProperty IPAddress
+        $subnet = Get-NetIPAddress -AddressFamily IPv4 -InterfaceIndex $nic | Select-Object -ExpandProperty Prefix
+        $networkAddress = ($ipAddress.Split(".")[0..2] -join ".") + ".0"
+        $netID = "$networkAddress/$subnet"
+        $startRange = ($ipAddress.Split(".")[0..2] -join ".") + ".1"
+        $endRange = ($ipAddress.Split(".")[0..2] -join ".") + ".254"
+        #TODO check for subnet and clal the max range
+        Add-DhcpServerv4Scope -ComputerName $env:computername -Name "Main scope" -StartRange $startRange -EndRange $endRange -SubnetMask ConvertTo-SubnetMask-MaskBits $subnet
+    }
+    catch {
+        Write-Host "> Error: Something went wrong while configuring the DHCP scope." -ForegroundColor Red
+        Write-Error $_.Exception.Message
+    }
+
+    try {
+        Set-DhcpServerv4OptionValue -OptionId 15 -Value (Get-WmiObject win32_computersystem).DNSHostName + "." + (Get-WmiObject win32_computersystem).Domain
+        Set-DhcpServerv4OptionValue -OptionId 6 -Value ($primDNS, $secDNS)
+        Set-DhcpServerv4OptionValue -OptionId 3 -Value (Get-NetRoute -InterfaceIndex 9 | Select-Object -ExpandProperty NextHop)
+    }
+    catch {
+        Write-Host "> Error: Something went wrong while configuring the DHCP options." -ForegroundColor Red
+        Write-Error $_.Exception.Message
+    }
+}   
 
 function ConvertTo-SubnetMask {
     param(
