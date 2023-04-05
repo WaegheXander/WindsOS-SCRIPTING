@@ -395,27 +395,27 @@ catch {
 
 try {
     Write-Host "> Configuring DHCP options" -ForegroundColor Yellow
-    if (Get-DhcpServerv4OptionValue -OptionId 15) {
+    if (Get-DhcpServerv4OptionValue -OptionId 15 -ErrorAction Ignore) {
         Write-Host "> DHCP option 15 already configured." -ForegroundColor Green
     }
     else {
-        Set-DhcpServerv4OptionValue -OptionId 15 -Value (Get-WmiObject win32_computersystem).DNSHostName + "." + (Get-WmiObject win32_computersystem).Domain
+        Set-DhcpServerv4OptionValue -OptionId 15 -Value (Get-WmiObject win32_computersystem).DNSHostName + "." + (Get-WmiObject win32_computersystem).Domain -Force
         Write-Host "> DHCP option 15 configured." -ForegroundColor Green
     }
 
-    if (Get-DhcpServerv4OptionValue -OptionId 6) {
+    if (Get-DhcpServerv4OptionValue -OptionId 6 -ErrorAction Ignore) {
         Write-Host "> DHCP option 6 already configured." -ForegroundColor Green
     }
     else {
-        Set-DhcpServerv4OptionValue -OptionId 6 -Value ($primDNS, $secDNS)
+        Set-DhcpServerv4OptionValue -OptionId 6 -Value ($primDNS, $secDNS) -Force
         Write-Host "> DHCP option 6 configured." -ForegroundColor Green
     }
 
-    if (Get-DhcpServerv4OptionValue -OptionId 3) {
+    if (Get-DhcpServerv4OptionValue -OptionId 3 -ErrorAction Ignore) {
         Write-Host "> DHCP option 3 already configured." -ForegroundColor Green
     }
     else {
-        Set-DhcpServerv4OptionValue -OptionId 3 -Value (Get-NetRoute -InterfaceIndex $nic | Select-Object -ExpandProperty NextHop)
+        Add-DhcpServerv4OptionValue -OptionId 3 -Value ((Get-NetRoute -InterfaceIndex $nic).NextHop -split '0.0.0.0') -Force
         Write-Host "> DHCP option 3 configured." -ForegroundColor Green
     }
     Write-Host "> DHCP options configured." -ForegroundColor Green
