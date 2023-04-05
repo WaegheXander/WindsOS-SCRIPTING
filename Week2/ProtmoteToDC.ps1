@@ -325,6 +325,7 @@ else {
         Write-Error $_.Exception.Message
     }
 }
+
 #check if dhcp server is authorized on the domain
 if (Get-DhcpServerInDC -erroraction SilentlyContinue) {
     Write-Host "> DHCP server is authorized on the domain." -ForegroundColor Green
