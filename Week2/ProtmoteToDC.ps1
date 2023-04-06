@@ -273,8 +273,8 @@ try {
         Write-Output "> Warning: Reverse lookup zone does not exist." -ForegroundColor Yellow
         Write-Host "> Creating reverse lookup zone $zoneName" -ForegroundColor Yellow
         # Create the reverse lookup zone
-        Add-DnsServerPrimaryZone -NetworkID $netID -ReplicationScope "Forest"
-        Write-Host "> Creating PTR record" -ForegroundColor Yellow
+        Add-DnsServerPrimaryZone -NetworkID $netID -ReplicationScope "Domain" -DynamicUpdate "Secure"
+        Write-Host "> Creating PTR record" -ForegroundColor Yellow 
         # Create the PTR record
         $PtrDomainName = (Get-WmiObject win32_computersystem).DNSHostName + "." + (Get-WmiObject win32_computersystem).Domain;
         Add-DnsServerResourceRecordPtr -ZoneName $zoneName -Name $env:computername -PtrDomainName $PtrDomainName
@@ -402,7 +402,6 @@ try {
         Set-DhcpServerv4OptionValue -OptionId 15 -Value (Get-WmiObject win32_computersystem).DNSHostName + "." + (Get-WmiObject win32_computersystem).Domain -Force
         Write-Host "> DHCP option 15 configured." -ForegroundColor Green
     }
-
     if (Get-DhcpServerv4OptionValue -OptionId 6 -ErrorAction Ignore) {
         Write-Host "> DHCP option 6 already configured." -ForegroundColor Green
     }
