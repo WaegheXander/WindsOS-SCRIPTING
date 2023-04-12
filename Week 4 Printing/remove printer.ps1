@@ -1,7 +1,34 @@
-# Be able to remove a printer and the unused printer ports.
-# Create and share a printer pool with the printer ports 172.23.80.3 and 172.23.82.3. Make sure you can undo these settings.
-# Tip: PrintUI.dll
-# Create and share a printer that is daily available from 8am till 6pm. Make it available for nightly prints from 6pm till 8am.
-# Specifying the time is a challenge.
-# Figure out a combination of 6 and 7.
-# Figure out to secure a printer. Google is your best friend is this one. There are no direct PS commands available to secure a printer.
+function  Remove-PrinteByName {
+    # Prompt the user for the printer name
+    $printerName = Read-Host "Enter the name of the printer to remove"
+    
+    # Get the printer object
+    $printer = Get-Printer -Name $printerName
+    
+    if ($printer) {
+        # Remove the printer
+        Remove-Printer -InputObject $printer
+        Write-Host "Printer $printerName has been removed."
+        
+        # Get the printer ports associated with the printer
+        $ports = Get-PrinterPort -CimSession $printer.CimSession | Where-Object { $_.Name -match $printerName }
+        
+        if ($ports) {
+            # Remove any unused ports
+            foreach ($port in $ports) {
+                if ((Get-WmiObject -Class Win32_Printer -Filter "PortName='$($port.Name)'").Count -eq 0) {
+                    Remove-PrinterPort -InputObject $port
+                    Write-Host "Port $($port.Name) has been removed."
+                }
+            }
+        }
+        else {
+            Write-Host "No printer ports found for printer $printerName."
+            Remove-PrinteByName
+        }
+    }
+    else {
+        Write-Host "Printer $printerName not found."
+        Remove-PrinteByName
+    }
+}
