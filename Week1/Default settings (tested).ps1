@@ -193,8 +193,8 @@ try {
     # check if the key exists if not create it
     If (!(Test-Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\ControlPanel")) {
         Write-Host "> Warning: Control Panel key does not exist" -ForegroundColor Yellow
-        Write-Host "> Creating Control Panel key" -ForegroundColor Yellow
         New-Item -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\ControlPanel" | Out-Null
+        Write-Host ">  New Control Panel key sussesfully created" -ForegroundColor Green
     }
     # setting the view to small icons
     Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\ControlPanel" -Name "StartupPage" -Type DWord -Value 1
@@ -213,7 +213,7 @@ catch {
 try {
     Set-ItemProperty HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced HideFileExt "0"
     Stop-Process -Name Explorer -force
-    Write-Host "File extension shown successfully" -ForegroundColor Green
+    Write-Host "> File extension shown successfully" -ForegroundColor Green
 }
 catch {
     Write-Host "> Error: Something went wrong with enabling the file extension to be shown" -ForegroundColor Red
@@ -259,6 +259,20 @@ while ($True) {
     }
 }
 #endregion 
+
+#
+# enable windows firewall for remote management
+#region
+try {
+    Enable-PSRemoting -Force
+    Enable-NetFirewallRule -DisplayName "*Network Access*"
+    Enable-NetFirewallRule -DisplayGroup "*Remote Event Log*"
+    Enable-NetFirewallRule -DisplayGroup "*Remote File Server Resource Manager Management*"
+    Write-Host "> Windows firewall for remote management enabled successfully" -ForegroundColor Green
+} catch {
+    Write-Host "> Error: Something went wrong with enabling windows firewall for remote management" -ForegroundColor Red
+    Write-Error $_.Exception.Message
+}
 
 #
 # Setting the hostname
