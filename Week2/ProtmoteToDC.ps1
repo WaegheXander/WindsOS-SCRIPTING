@@ -332,6 +332,25 @@ catch {
 }
 #endregion
 
+#
+    # Remove all flags
+    #region
+    try {
+        Set-ItemProperty -Path registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\ServerManager\Roles\12 -Name ConfigurationState -Value 2
+        Write-Host "> Removed dhcp flag" -ForegroundColor Green
+    }
+    catch {
+        Write-Host "> Error: Something went wrong while removing the dhcp flag." -ForegroundColor Red
+    }
+
+    try {
+        Set-ItemProperty -Path registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\ServerManager\Roles\8 -Name ConfigurationState -Value 2
+        Write-Host "> Removed AD config flag" -ForegroundColor Green
+    }
+    catch {
+        Write-Host "> Error: Something went wrong while removing the AD config flag." -ForegroundColor Red
+    }
+
 function ConvertTo-SubnetMask {
     param(
         [Parameter(Mandatory = $true)]
