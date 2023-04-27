@@ -4,6 +4,12 @@ $secondDC = "win09-DC2"
 $remoteSession = New-PSSession -ComputerName $secondDC -Credential $domainCredential
 
 Invoke-Command -Session $remoteSession -Scriptblock {
+    Write-Host "Hello from $env:COMPUTERNAME"
+    Write-Host "#" -ForegroundColor Yellow
+    Write-Host "# Warning This is a remote session" -ForegroundColor Yellow
+    Write-Host "#" -ForegroundColor Yellow
+
+
     #
     # Check if the input is a valid IP address
     #region
@@ -272,8 +278,6 @@ Invoke-Command -Session $remoteSession -Scriptblock {
             Write-Host "> DHCP server is not authorized on the domain. Authorizing DHCP server on the domain" -ForegroundColor Yellow
             Add-DhcpServerInDC
             Write-Host "> DHCP server authorized on the domain." -ForegroundColor Green
-            Set-ItemProperty -Path registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\ServerManager\Roles\12 -Name ConfigurationState -Value 2
-            Write-Host "> Removed PendingXmlIdentifier registry key." -ForegroundColor Green
         }
         catch {
             Write-Host "> Error: Something went wrong while authorizing the DHCP server on the domain." -ForegroundColor Red
@@ -339,6 +343,25 @@ Invoke-Command -Session $remoteSession -Scriptblock {
         Write-Error $_.Exception.Message
     }
     #endregion
+
+    #
+    # Remove all flags
+    #region
+    try {
+        Set-ItemProperty -Path registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\ServerManager\Roles\12 -Name ConfigurationState -Value 2
+        Write-Host "> Removed dhcp flag" -ForegroundColor Green
+    }
+    catch {
+        Write-Host "> Error: Something went wrong while removing the dhcp flag." -ForegroundColor Red
+    }
+
+    try {
+        Set-ItemProperty -Path registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\ServerManager\Roles\8 -Name ConfigurationState -Value 2
+        Write-Host "> Removed AD config flag" -ForegroundColor Green
+    }
+    catch {
+        Write-Host "> Error: Something went wrong while removing the AD config flag." -ForegroundColor Red
+    }
 
     function ConvertTo-SubnetMask {
         param(
