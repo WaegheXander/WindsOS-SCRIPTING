@@ -227,26 +227,20 @@ catch {
 $ans = Read-Host "> Do you want to add this server to a domain? (y/n)"
 while ($True) {
     if ($ans.ToLower() -eq "y") {
-        $ans = Read-Host "> What is the domain name? (example: domain.local)"
-        # check if domain name exist
-        if (Test-Connection -ComputerName $ans -Count 1 -Quiet) {
-            $domain = $ans
+        $DomainName = Read-Host "> Enter the domain name (e.g. domain.local.be)"
+        if ((Get-WmiObject -Class Win32_ComputerSystem).PartOfDomain)
+        {
+            Write-Host "> Computer is already member of a domain!" -ForegroundColor Yellow
         }
-        else {
-            Write-Host "> Error: Domain name does not exist" -ForegroundColor Red
-            $ans = Read-Host "> What is the domain name? (example: domain.local)"
-            break
-        }
-        
-        try {
-            Write-Host "> Adding server to domain"
-            Add-Computer -DomainName $domain -Credential Get-Credential
-            Write-Host "> Server added to domain successfully" -ForegroundColor Green
-            break
-        }
-        catch {
-            Write-Host "> Error: Something went wrong with adding the server to the domain" -ForegroundColor Red
-            Write-Error $_.Exception.Message
+        else
+        {
+            try {
+                Add-Computer -DomainName $DomainName -Credential "$env:USERDOMAIN\$env:USERNAME"
+                Write-Host "> Server added to domain successfully" -ForegroundColor Green
+            }
+            catch {
+                Write-Host "> Error: Something went wrong with adding the server to the domain" -ForegroundColor Red
+            }
         }
     }
     elseif ($ans.ToLower() -eq "n") {
