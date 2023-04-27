@@ -99,6 +99,7 @@ function install-BackupDC {
             -DomainName $DomainName `
             -DomainNetbiosName $DomainName `
             -SafeModeAdministratorPassword (ConvertTo-SecureString (Read-Host "Password for BackupDC" -AsSecureString) -AsPlainText -Force) `
+            -InstallDns:$True `
             -NoRebootOnCompletion:$True `
             -Force:$True;
         Write-Host "> Domain $DomainName created successfully." -ForegroundColor Green

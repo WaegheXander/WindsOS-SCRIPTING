@@ -17,7 +17,7 @@ Invoke-Command -Session $remoteSession -Scriptblock {
         param (
             $ip
         )
-    
+        
         $ipRegex = "^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
         if ($ip -match $ipRegex) {
             return $true
@@ -27,8 +27,7 @@ Invoke-Command -Session $remoteSession -Scriptblock {
         }
     }
     #endregion
-
-
+    
     #
     # Check if the script is running as administrator
     #region 
@@ -42,12 +41,12 @@ Invoke-Command -Session $remoteSession -Scriptblock {
         Write-Host "> Code is running as administrator" -ForegroundColor Green
     }
     #endregion
-
+    
     #
     # get the nic
     #region
     try {
-        $nic = (Get-NetIPAddress -AddressFamily IPv4 -InterfaceAlias (Get-NetAdapter).Name | Select-Object -ExpandProperty InterfaceIndex)
+        $nic = Get-NetAdapter -Physical | Where-Object { $_.PhysicalMediaType -match "802.3" -and $_.status -eq "up" }
     }
     catch {
         Write-Host "> Error: No network adapter found" -ForegroundColor Red
@@ -55,7 +54,7 @@ Invoke-Command -Session $remoteSession -Scriptblock {
         Exit
     }
     #endregion
-
+    
     #
     # Check if AD-Domain-Services is installed
     #region
@@ -70,7 +69,7 @@ Invoke-Command -Session $remoteSession -Scriptblock {
         Write-Host "> AD-Domain-Services feature is already installed." -ForegroundColor Green
     }
     #endregion
-
+    
     #
     # Install Forest if not already installed
     #region
@@ -79,7 +78,7 @@ Invoke-Command -Session $remoteSession -Scriptblock {
     function install-PrimaryDC {
         $NetBiosName = Read-Host "Enter the name of the NetBiosName (ex. INTRANET)"
         $NetBiosName = $NetBiosName.ToUpper()
-
+    
         $DomainName = Read-Host "Enter the name of the new forest ($NetBiosName.???)"
         $forestName = "$NetBiosName.$DomainName"
         Write-Host "> Creating new forest $forestName..." -ForegroundColor Yellow
@@ -100,8 +99,8 @@ Invoke-Command -Session $remoteSession -Scriptblock {
             Write-Error $_.Exception.Message
         }
     }
-
-    # install a secondary domain controller in an existing forest
+    
+    # install a backup domain controller
     function install-BackupDC {
         $DomainName = (Get-WmiObject Win32_ComputerSystem).Domain
         Write-Host "> Creating Backup domain controller" -ForegroundColor Yellow
@@ -112,6 +111,7 @@ Invoke-Command -Session $remoteSession -Scriptblock {
                 -DomainName $DomainName `
                 -DomainNetbiosName $DomainName `
                 -SafeModeAdministratorPassword (ConvertTo-SecureString (Read-Host "Password for BackupDC" -AsSecureString) -AsPlainText -Force) `
+                -InstallDns:$True `
                 -NoRebootOnCompletion:$True `
                 -Force:$True;
             Write-Host "> Domain $DomainName created successfully." -ForegroundColor Green
@@ -121,7 +121,7 @@ Invoke-Command -Session $remoteSession -Scriptblock {
             Write-Error $_.Exception.Message
         }
     }
-
+    
     # Check if it is an Primary or a Backup Domain Controller
     if ((Get-WmiObject -Class Win32_ComputerSystem).DomainRole -eq 5) {
         # Primary Domain Controller
@@ -149,7 +149,7 @@ Invoke-Command -Session $remoteSession -Scriptblock {
         }
     }
     #endregion
-
+    
     #
     # Configure DNS
     #region
@@ -172,7 +172,7 @@ Invoke-Command -Session $remoteSession -Scriptblock {
         Write-Error $_.Exception.Message
     }
     #endregion
-
+    
     #
     # Configure Reverse Lookup Zone
     #region
@@ -183,7 +183,7 @@ Invoke-Command -Session $remoteSession -Scriptblock {
         $subnet = $adapter | Get-NetIPAddress -AddressFamily IPv4 | Select-Object -ExpandProperty PrefixLength
         $networkAddress = ($ipAddress.Split(".")[0..2] -join ".") + ".0"
         $netID = "$networkAddress/$subnet"
-
+    
         # Check if a reverse lookup zone exists for the subnet
         $zoneName = (($netID -split '\.')[2, 1, 0] -join '.') + ".in-addr.arpa"
         $zoneExists = Get-DnsServerZone -Name $zoneName -ErrorAction SilentlyContinue
@@ -200,7 +200,7 @@ Invoke-Command -Session $remoteSession -Scriptblock {
             $PtrDomainName = (Get-WmiObject win32_computersystem).DNSHostName + "." + (Get-WmiObject win32_computersystem).Domain;
             Add-DnsServerResourceRecordPtr -ZoneName $zoneName -Name $env:computername -PtrDomainName $PtrDomainName
             Write-Host "> Reverse lookup zone $zoneName created successfully." -ForegroundColor Green   
-
+    
             Register-DnsClient
         }
     }
@@ -209,7 +209,7 @@ Invoke-Command -Session $remoteSession -Scriptblock {
         Write-Error $_.Exception.Message
     }
     #endregion
-
+    
     #
     # rename the default-first-site-name
     #region
@@ -235,7 +235,7 @@ Invoke-Command -Session $remoteSession -Scriptblock {
                 }
                 $siteName = Read-Host "Enter the name of the site"
             }
-
+    
             Get-ADObject -SearchBase (Get-ADRootDSE).ConfigurationNamingContext -Filter 'objectclass -like "site"' | Rename-ADObject -NewName $SiteName;
             break
         }
@@ -246,8 +246,7 @@ Invoke-Command -Session $remoteSession -Scriptblock {
         $ans = Read-Host "Do you want to rename the default-first-site-name? (Y/N)"
     }
     #endregion
-
-
+    
     #
     # Configure DHCP
     #region
@@ -266,7 +265,7 @@ Invoke-Command -Session $remoteSession -Scriptblock {
         }
     }
     #endregion
-
+    
     #
     #check if dhcp server is authorized on the domain
     #region
@@ -278,6 +277,8 @@ Invoke-Command -Session $remoteSession -Scriptblock {
             Write-Host "> DHCP server is not authorized on the domain. Authorizing DHCP server on the domain" -ForegroundColor Yellow
             Add-DhcpServerInDC
             Write-Host "> DHCP server authorized on the domain." -ForegroundColor Green
+            Set-ItemProperty -Path registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\ServerManager\Roles\12 -Name ConfigurationState -Value 2
+            Write-Host "> Removed PendingXmlIdentifier registry key." -ForegroundColor Green
         }
         catch {
             Write-Host "> Error: Something went wrong while authorizing the DHCP server on the domain." -ForegroundColor Red
@@ -285,7 +286,7 @@ Invoke-Command -Session $remoteSession -Scriptblock {
         }
     }
     #endregion
-
+    
     #
     #check if there is a scope configured
     #region
@@ -311,7 +312,7 @@ Invoke-Command -Session $remoteSession -Scriptblock {
         Write-Host "> Error: Something went wrong while configuring the DHCP scope." -ForegroundColor Red
         Write-Error $_.Exception.Message
     }
-
+    
     try {
         Write-Host "> Configuring DHCP options" -ForegroundColor Yellow
         if (Get-DhcpServerv4OptionValue -OptionId 15 -ErrorAction Ignore) {
@@ -328,7 +329,7 @@ Invoke-Command -Session $remoteSession -Scriptblock {
             Set-DhcpServerv4OptionValue -OptionId 6 -Value ($primDNS, $secDNS) -Force
             Write-Host "> DHCP option 6 configured." -ForegroundColor Green
         }
-
+    
         if (Get-DhcpServerv4OptionValue -OptionId 3 -ErrorAction Ignore) {
             Write-Host "> DHCP option 3 already configured." -ForegroundColor Green
         }
@@ -343,7 +344,7 @@ Invoke-Command -Session $remoteSession -Scriptblock {
         Write-Error $_.Exception.Message
     }
     #endregion
-
+    
     #
     # Remove all flags
     #region
@@ -354,7 +355,7 @@ Invoke-Command -Session $remoteSession -Scriptblock {
     catch {
         Write-Host "> Error: Something went wrong while removing the dhcp flag." -ForegroundColor Red
     }
-
+    
     try {
         Set-ItemProperty -Path registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\ServerManager\Roles\8 -Name ConfigurationState -Value 2
         Write-Host "> Removed AD config flag" -ForegroundColor Green
@@ -362,7 +363,7 @@ Invoke-Command -Session $remoteSession -Scriptblock {
     catch {
         Write-Host "> Error: Something went wrong while removing the AD config flag." -ForegroundColor Red
     }
-
+    
     function ConvertTo-SubnetMask {
         param(
             [Parameter(Mandatory = $true)]

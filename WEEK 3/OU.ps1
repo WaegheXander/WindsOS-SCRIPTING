@@ -15,7 +15,6 @@ Foreach ($OU in $OUNames)
 	}
 	catch
 	{
-		New-ADOrganizationalUnit -Name $Name -DisplayName $DisplayName  -Description $Description -Path $Path
-        set-ADOrganizationalUnit -Identity $Identity -ProtectedFromAccidentalDeletion:$false
+		New-ADOrganizationalUnit -Name $Name -DisplayName $DisplayName  -Description $Description -Path $Path -ProtectedFromAccidentalDeletion:$false
 	}
 }
