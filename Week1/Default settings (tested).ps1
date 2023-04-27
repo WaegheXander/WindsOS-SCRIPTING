@@ -54,10 +54,10 @@ while ($MaskBits -le 0 -or $MaskBits -ge 32) {
 Write-Host "> Setting IP address"
 # Get the network adapter
 Get-NetAdapter -Name *
-$adapterNR = Read-Host "Enter the number of the network adapter"
+$adapterNR = Read-Host "Enter the name of the network adapter"
 while ($True) {
     if ($adapterNR -ge 0) {
-        $adapterName = "Ethernet$adapterNR"
+        $adapterName = "$adapterNR"
         break
     }
     else {

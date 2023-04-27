@@ -16,7 +16,6 @@ function checkValidIP {
 }
 #endregion
 
-
 #
 # Check if the script is running as administrator
 #region 
@@ -32,101 +31,10 @@ else {
 #endregion
 
 #
-# ask if it wants a remote connection
-#region
-$ans = Read-Host "Do you want to connect to a remote computer? (Y/N)"
-while ($true) {
-    if ($ans.ToLower() -eq "y") {
-        Enable-PSRemoting -Force
-        $computer = Read-Host "Enter the name of the remote computer"
-        while ($true) {
-            if ($computer -ne "") {
-                Write-Host "> Error: The computer name cannot be empty" -ForegroundColor Red
-                $computer = Read-Host "Enter the name of the remote computer"
-            }
-            else {
-                # test if the computer is reachable
-                try {
-                    Test-Connection -ComputerName $computer -Count 3 -Quiet
-                    Write-Host "> Computer $computer is reachable" -ForegroundColor Green
-                    Start-RemoteSession $computer
-                }
-                catch {
-                    Write-Host "> Error: Computer $computer is not reachable" -ForegroundColor Red
-                    $computer = Read-Host "Enter the name of the remote computer"
-                }
-            }
-        }
-        break
-    }
-    elseif ($ans.ToLower() -eq "n") {
-        break
-    }
-    else {
-        Write-Host "> Error: Invalid answer. Please enter Y or N" -ForegroundColor Red
-        $ans = Read-Host "Do you want to connect to a remote computer? (Y/N)"
-    }
-}
-#endregion
-
-#
-# start a remote session
-#region
-function Start-RemoteSession {
-    param (
-        $ComputerName
-    )
-
-    # check if a remote session is already open
-    if (Get-PSSession -ComputerName $ComputerName) {
-        Write-Host "> Error: A remote session is already open" -ForegroundColor Red
-        $ans = Read-Host "Do you want to close the remote session? (Y/N)"
-        while ($true) {
-            if ($ans.ToLower() -eq "y") {
-                # close the remote session
-                try {
-                    Remove-PSSession -ComputerName $ComputerName
-                    Write-Host "> Remote session closed successfully" -ForegroundColor Green
-                    break
-                }
-                catch {
-                    Write-Host "> Error: Something went wrong while closing the remote session" -ForegroundColor Red
-                    Write-Error $_.Exception.Message
-                    break
-                }
-            }
-            elseif ($ans.ToLower() -eq "n") {
-                break
-            }
-            else {
-                Write-Host "> Error: Invalid answer. Please enter Y or N" -ForegroundColor Red
-                $ans = Read-Host "Do you want to close the remote session? (Y/N)"
-            }
-        }
-    }
-    else {
-        # open a remote session
-        try {
-            $session = New-PSSession -ComputerName $ComputerName
-            Write-Host "> Remote session opened successfully" -ForegroundColor Green
-            Write-Host "> Connecting to remote session..." -ForegroundColor Yellow
-            Enter-PSSession -Session $session
-            Write-Host "> Connected to remote session" -ForegroundColor Green
-        }
-        catch {
-            Write-Host "> Error: Something went wrong while opening the remote session" -ForegroundColor Red
-            Write-Error $_.Exception.Message
-        }
-    }
-}
-#endregion
-
-
-#
 # get the nic
 #region
 try {
-    $nic = (Get-NetIPAddress -AddressFamily IPv4 -InterfaceAlias (Get-NetAdapter).Name | Select-Object -ExpandProperty InterfaceIndex)
+    $nic = Get-NetAdapter -Physical | Where-Object { $_.PhysicalMediaType -match "802.3"-and $_.status -eq "up"}
 }
 catch {
     Write-Host "> Error: No network adapter found" -ForegroundColor Red
@@ -180,7 +88,7 @@ function install-PrimaryDC {
     }
 }
 
-# install a secondary domain controller in an existing forest
+# install a backup domain controller
 function install-BackupDC {
     $DomainName = (Get-WmiObject Win32_ComputerSystem).Domain
     Write-Host "> Creating Backup domain controller" -ForegroundColor Yellow
@@ -326,7 +234,6 @@ while ($true) {
 }
 #endregion
 
-
 #
 # Configure DHCP
 #region
@@ -357,7 +264,7 @@ else {
         Write-Host "> DHCP server is not authorized on the domain. Authorizing DHCP server on the domain" -ForegroundColor Yellow
         Add-DhcpServerInDC
         Write-Host "> DHCP server authorized on the domain." -ForegroundColor Green
-        Remove-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\ServerManager\Roles" -Name "PendingXmlIdentifier" -Force
+        Set-ItemProperty -Path registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\ServerManager\Roles\12 -Name ConfigurationState -Value 2
         Write-Host "> Removed PendingXmlIdentifier registry key." -ForegroundColor Green
     }
     catch {
