@@ -23,8 +23,7 @@ $remoteSession = New-PSSession -ComputerName $secondDC -Credential $domainCreden
 Invoke-Command -Session $remoteSession -Scriptblock {
 
     $domainCredential = $args[0]
-    $secondDC = $args[1]
-    $MemberServer = $args[2]
+    $MemberServer = $args[1]
 
     $WindowsFeature = "FS-DFS-Replication"
     if (Get-WindowsFeature $WindowsFeature | Where-Object { $_.installed -eq $false }) {
@@ -48,7 +47,7 @@ Invoke-Command -Session $remoteSession -Scriptblock {
             Write-Host "$WindowsFeature already installed 2" -ForegroundColor Green
         }
     }
-} -ArgumentList $domainCredential, $secondDC, $MemberServer
+} -ArgumentList $domainCredential, $MemberServer
 
 
 $DFSRGroup="demo"
