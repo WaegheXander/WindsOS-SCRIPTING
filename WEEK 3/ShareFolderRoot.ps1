@@ -13,9 +13,9 @@ if (Get-Item -Path $UNCPath -ErrorAction SilentlyContinue) {
 }
 else {
     New-Item -Path $UNCPath -type directory -Force | Out-Null
-    Write-Host "> Created $UNCPath" -ForegroundColor Green 
+    Write-Host "> Created $UNCPath" -ForegroundColor Green
 }
-
+<#
 #
 # Share the root share and set permissions
 #
@@ -169,3 +169,4 @@ Foreach ($User in $userNames) {
         Set-Acl $HomeDirectory $acl
     }
 }
+#>

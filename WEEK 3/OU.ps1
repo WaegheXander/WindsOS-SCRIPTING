@@ -16,6 +16,6 @@ Foreach ($OU in $OUNames)
 	catch
 	{
 		New-ADOrganizationalUnit -Name $Name -DisplayName $DisplayName  -Description $Description -Path $Path -ProtectedFromAccidentalDeletion:$false
-        Write-Output "> OU $Name created" -ForegroundColor Green
+		Write-Output "> Created OU $Name in $Path !" -ForegroundColor Green
 	}
 }
