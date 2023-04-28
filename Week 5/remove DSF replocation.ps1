@@ -3,7 +3,7 @@
 #
 $DFSRGroup="demo"
 $DFSRFolder="little_demo"
-$DFSRMembers=@("win00-ms","win00-dc2")
+$DFSRMembers=@("win09-ms","win09-dc2")
 
 foreach ($DFSRMember in $DFSRMembers)
 {
