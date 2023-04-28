@@ -1,34 +1,35 @@
-function  Remove-PrinteByName {
-    # Prompt the user for the printer name
-    $printerName = Read-Host "Enter the name of the printer to remove"
-    
-    # Get the printer object
-    $printer = Get-Printer -Name $printerName
-    
-    if ($printer) {
-        # Remove the printer
-        Remove-Printer -InputObject $printer
-        Write-Host "Printer $printerName has been removed."
-        
-        # Get the printer ports associated with the printer
-        $ports = Get-PrinterPort -CimSession $printer.CimSession | Where-Object { $_.Name -match $printerName }
-        
-        if ($ports) {
-            # Remove any unused ports
-            foreach ($port in $ports) {
-                if ((Get-WmiObject -Class Win32_Printer -Filter "PortName='$($port.Name)'").Count -eq 0) {
-                    Remove-PrinterPort -InputObject $port
-                    Write-Host "Port $($port.Name) has been removed."
-                }
-            }
-        }
-        else {
-            Write-Host "No printer ports found for printer $printerName."
-            Remove-PrinteByName
-        }
+#
+# Removing a printer
+#
+$PrinterName = "HP Laserjet 4050"
+
+try {
+    Get-Printer -Name $PrinterName -ErrorAction Stop | Out-Null
+    Remove-Printer -Name $PrinterName
+    Write-Host "> Printer $PrinterName Removed" -ForegroundColor Green
+}
+catch {
+    Write-Host "> Error: Printer $PrinterName doesn't exist ..." -ForegroundColor Red
+    Pause
+    exit
+}
+
+#
+# Removing a printer port
+#
+$PrinterPort = "172.23.80.3_TCPPort"
+try {
+    Get-PrinterPort -Name $PrinterPort -ErrorAction Stop | Out-Null
+    try {
+        Remove-PrinterPort -Name $PrinterPort -ErrorAction Stop
+        Write-Host "> Printer port $PrinterPort Removed" -ForegroundColor Green
     }
-    else {
-        Write-Host "Printer $printerName not found."
-        Remove-PrinteByName
-    }
+    catch {
+        # Printer port is in use …
+        Write-Host "> Error: Unable to remove printer port '$PrinterPort'" -ForegroundColor Red
+    } 
+}
+catch {
+    # Printer port is in use …
+    Write-Host "> Error: Printer port $PrinterPort doesn't exist ..." -ForegroundColor Red
 }
