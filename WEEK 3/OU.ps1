@@ -9,10 +9,10 @@ Foreach ($OU in $OUNames) {
 
 	try {
 		Get-ADOrganizationalUnit -Identity $Identity | Out-Null
-		Write-Output "> OU $Name already exists in $Path !" -ForegroundColor Yellow
+		Write-Host "> $Name already exists in $Path" -ForegroundColor Yellow
 	}
 	catch {
 		New-ADOrganizationalUnit -Name $Name -DisplayName $DisplayName  -Description $Description -Path $Path -ProtectedFromAccidentalDeletion:$false
-		Write-Output "> Created OU $Name in $Path !" -ForegroundColor Green
+		Write-Host "> Created OU $Name in $Path" -ForegroundColor Green
 	}
 }
